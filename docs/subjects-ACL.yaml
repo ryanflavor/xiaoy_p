@@ -1,0 +1,126 @@
+version: 0.1.0
+updated: 2025-10-20
+owner: pm+arch
+notes: |
+  Subject naming and ACL model for xiaoy (NATS/JetStream).
+  Baseline aligns with TD‑010, TD‑004, TD‑016. Environment/tenant prefixes are
+  recommended to avoid cross‑talk between dev/stage/prod.
+
+conventions:
+  prefix:
+    # Suggested global subject prefix. Replace <env> and <tenant> per deployment.
+    # Example: prod.cntrader
+    env: "<env>"     # dev | stage | prod
+    tenant: "<tenant>" # optional org/project scope
+    root: "<env>.<tenant>"
+  tokens:
+    group: "logical data group (e.g., portfolio or market board)"
+    account: "trading account identifier"
+    request_id: "ULID used for idempotency and correlation"
+    algo_id: "algorithm instance id"
+
+subjects:
+  - name: "{root}.agg.delta.{group}"
+    kind: stream
+    payload: FlatBuffers
+    cadence: 33ms
+    purpose: "Incremental updates for visible data groups"
+    producers: [aggregator]
+    consumers: [ws-gateway]
+    retention: memory
+
+  - name: "{root}.agg.snapshot.{group}"
+    kind: stream
+    payload: Protobuf
+    cadence: 2-5s
+    purpose: "Periodic snapshots for rebuild and late joiners"
+    producers: [aggregator]
+    consumers: [ws-gateway]
+    retention: memory
+
+  - name: "{root}.orders.req.{account}"
+    kind: req-rep
+    payload: JSON | Protobuf
+    purpose: "Order placement/amend/cancel requests"
+    producers: [ws-gateway]
+    consumers: [order-service, algo-service]
+    retention: none
+
+  - name: "{root}.orders.ack.{account}.{request_id}"
+    kind: point
+    payload: JSON | Protobuf
+    purpose: "Order acknowledgements and terminal results"
+    producers: [order-service]
+    consumers: [ws-gateway]
+    retention: 90d # via JetStream for audit
+
+  - name: "{root}.algo.events.{account}.{algo_id}"
+    kind: broadcast
+    payload: JSON | Protobuf
+    purpose: "Running algo state/metrics/events"
+    producers: [algo-service]
+    consumers: [ws-gateway, ops-monitor]
+    retention: 7d
+
+  - name: "{root}.audit.orders"
+    kind: stream
+    payload: JSON
+    purpose: "Append‑only audit of order lifecycle"
+    producers: [order-service]
+    consumers: [ops-monitor]
+    retention: 90d
+
+roles:
+  aggregator:
+    publish: ["{root}.agg.delta.*", "{root}.agg.snapshot.*"]
+    subscribe: []
+
+  ws-gateway:
+    publish: ["{root}.orders.req.*"]
+    subscribe: [
+      "{root}.agg.delta.*",
+      "{root}.agg.snapshot.*",
+      "{root}.orders.ack.*",
+      "{root}.algo.events.*",
+    ]
+
+  order-service:
+    publish: ["{root}.orders.ack.*", "{root}.audit.orders"]
+    subscribe: ["{root}.orders.req.*"]
+
+  algo-service:
+    publish: ["{root}.algo.events.*"]
+    subscribe: ["{root}.orders.req.*"] # if algo consumes direct orders
+
+  ops-monitor:
+    publish: []
+    subscribe: ["{root}.audit.*", "{root}.algo.events.*"]
+
+security:
+  auth: JWT|NKey
+  acl: subject-based least-privilege
+  notes: |
+    - Generate per-role credentials with nsc; bind to subject allow/deny lists above.
+    - For ws-gateway, never expose NATS credentials to browsers; gateway terminates JWT and enforces per-user account scope.
+
+jetstream:
+  streams:
+    - name: "orders_audit"
+      subjects: ["{root}.audit.orders"]
+      storage: file
+      retention: limits
+      max_age: 2160h # 90d
+    - name: "algo_events"
+      subjects: ["{root}.algo.events.*"]
+      storage: file
+      retention: limits
+      max_age: 168h # 7d
+
+validation:
+  lint:
+    - unique subjects (no overlap unless intentional)
+    - env/tenant prefix required in prod
+  ci:
+    - diff check for ACL/subject changes; require review
+    - contract CI for payload schemas (append‑only rule)
+

@@ -1,0 +1,14 @@
+{
+  "name": "@xiaoy/core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test test/index.test.js",
+    "test:cov": "c8 -r lcov -r text-summary node --test",
+    "test:vitest": "vitest run spec --reporter=verbose"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.4"
+  }
+}

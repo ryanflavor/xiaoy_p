@@ -1,0 +1,32 @@
+{
+  "name": "xiaoy",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Monorepo baseline for xiaoy",
+  "packageManager": "pnpm@9.12.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "lint": "node tools/lint.mjs",
+    "lint:eslint": "eslint . --max-warnings=0",
+    "format": "prettier -w .",
+    "format:check": "node tools/format-check.mjs",
+    "format:check:prettier": "prettier -c \"packages/**/*.{js,ts,tsx,jsx,json}\" \"tools/**/*.{js,mjs,cjs}\"",
+    "build": "node tools/build.mjs",
+    "test": "node --test",
+    "test:cov": "c8 -r lcov -r text-summary node --test",
+    "test:vitest": "vitest run --reporter=verbose"
+  },
+  "engines": {
+    "node": ">=22.11.0"
+  },
+  "devDependencies": {
+    "c8": "^9.1.0",
+    "eslint": "^9.14.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "vitest": "^2.1.4"
+  }
+}

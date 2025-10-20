@@ -1,0 +1,18 @@
+[project]
+name = "pycore"
+version = "0.1.0"
+description = "xiaoy python core utilities"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+
+[build-system]
+requires = ["setuptools>=69", "wheel>=0.41"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = {find = {where = ["src"]}}
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

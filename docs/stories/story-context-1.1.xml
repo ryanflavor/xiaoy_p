@@ -1,0 +1,62 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1.1</storyId>
+    <title>仓库与 CI 基线</title>
+    <status>Draft</status>
+    <generatedAt>2025-10-20</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-1.1.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>工程团队（Enabler，服务 Trader）</asA>
+    <iWant>建立仓库与 CI 骨架（统一构建/格式化/单测与 PR 门禁）</iWant>
+    <soThat>团队能一致、可重复地集成与发布，缩短迭代并减少回归风险</soThat>
+    <tasks>
+      初始化工作区/目录；配置 CI（lint/format/test + 分支保护）；建立 env 与特性开关基线；完善 README 与 CONTRIBUTING；落地最小测试与格式化规范。
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    1) CI 运行 lint/format/unit 构建并启用主干保护与 PR 检查；
+    2) 基础目录结构与环境变量、特性开关就绪；
+    3) 模板 README 与 CONTRIBUTING 指南可用。
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      - docs/epics.md#Epic 1: Story 1.1 — 验收标准与动机摘录
+      - docs/PRD.md — FR019（环境与发布）、FR011（契约治理）相关背景
+      - docs/solution-architecture.md — 技术栈与组件分层（Node 22、pnpm 工作区）
+    </docs>
+    <code>
+      <!-- 初始仓库尚未生成实现代码，暂无直接相关代码制品 -->
+    </code>
+    <dependencies>
+      - Node.js 22（约定版本）；pnpm（工作区）；TypeScript（前端/工具链）
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    - CI 失败禁止合并；格式化/ESLint/单测为必需状态检查。
+    - 目录与命名遵循架构约定（apps/, services/, packages/, tools/；kebab-case）。
+  </constraints>
+  <interfaces>
+    <!-- 本故事无对外 API 接口变更，仅建立底座与规范。 -->
+  </interfaces>
+  <tests>
+    <standards>
+      JS/TS：vitest + eslint + prettier；Go：go test；Python：pytest。统一在 CI 汇总覆盖率并作为门禁参考。
+    </standards>
+    <locations>
+      apps/**/__tests__/**, packages/**/__tests__/**, services/**（语言自带测试目录）。
+    </locations>
+    <ideas>
+      - 检查格式化脚本与 ESLint 规则运行通过；
+      - 运行占位单元测试（JS/TS、Go、Python 各一）；
+      - 验证 CI 上必须通过的状态检查已启用。
+    </ideas>
+  </tests>
+</story-context>
+

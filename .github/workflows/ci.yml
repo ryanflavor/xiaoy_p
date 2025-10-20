@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.11.0 (LTS)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.11.0'
+      - name: Setup pnpm 9.12.2
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.2 --activate
+      - name: Install deps (pnpm)
+        run: pnpm install --prefer-offline
+      - name: Lint
+        run: pnpm run lint && pnpm run lint:eslint
+      - name: Format Check (rules)
+        run: pnpm run format:check
+      - name: Prettier Check (non-blocking)
+        run: pnpm run format:check:prettier || true
+      - name: Coverage (JS/TS)
+        run: pnpm -r --if-present run test:cov
+      - name: Vitest (JS/TS)
+        run: pnpm -r --if-present run test:vitest
+      - name: Feature Flags Check
+        run: test -f tools/feature-flags.json
+      - name: Unit Tests
+        run: pnpm -r --if-present test
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.9'
+      - name: Install uv
+        run: pip install uv
+      - name: Create venv
+        run: uv venv
+      - name: Install test deps
+        run: |
+          uv pip install -r packages/pycore/requirements-dev.txt
+          uv pip install -e packages/pycore
+      - name: Run pytest (uv)
+        run: uv run -m pytest -q packages/pycore
+
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go 1.25.3
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.3'
+      - name: Run Go tests
+        working-directory: services/gocore
+        run: go test ./...
