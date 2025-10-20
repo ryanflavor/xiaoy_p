@@ -24,7 +24,7 @@ Status: Ready for Review
 
 - [x] 配置 CI 门禁（AC1）
   - [x] 选择 CI（GitHub Actions `.github/workflows/ci.yml` 或 GitLab CI `.gitlab-ci.yml`）
-  - [x] 步骤：`setup-node` → `npm install` → `npm run lint` → `npm run lint:eslint` → `npm run format:check` → `npm run test:cov` → `npm test`
+  - [x] 步骤（与架构一致，pnpm）：`setup-node` → `corepack enable && corepack prepare pnpm@9.12.2 --activate` → `pnpm install` → `pnpm run lint` → `pnpm run lint:eslint` → `pnpm run format:check` → `pnpm -r run test:cov` → `pnpm -r test`
   - [x] 失败即阻断合并；生成基础测试覆盖率报告（c8 text-summary + lcov）
   - [x] 启用主干保护与必须通过的状态检查（至少 lint/format/test）
 

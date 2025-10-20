@@ -15,22 +15,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install
-        run: npm install --no-audit --no-fund
+      - name: Setup pnpm 9.12.2
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.2 --activate
+      - name: Install deps (pnpm)
+        run: pnpm install --prefer-offline
       - name: Lint
-        run: npm run lint && npm run lint:eslint
+        run: pnpm run lint && pnpm run lint:eslint
       - name: Format Check (rules)
-        run: npm run format:check
+        run: pnpm run format:check
       - name: Prettier Check
-        run: npm run format:check:prettier
+        run: pnpm run format:check:prettier
       - name: Coverage (JS/TS)
-        run: npm run -ws --if-present test:cov
+        run: pnpm -r --if-present run test:cov
       - name: Vitest (JS/TS)
-        run: npm run -ws --if-present test:vitest
+        run: pnpm -r --if-present run test:vitest
       - name: Feature Flags Check
         run: test -f tools/feature-flags.json
       - name: Unit Tests
-        run: npm test --workspaces --if-present
+        run: pnpm -r --if-present test
 
   python:
     runs-on: ubuntu-latest
