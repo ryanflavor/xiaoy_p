@@ -1,6 +1,6 @@
 # Story 1.1: 仓库与 CI 基线
 
-Status: Ready for Review
+Status: Done
 
 ## Story
 
@@ -106,6 +106,10 @@ Status: Ready for Review
 - 2025-10-20 完成“仓库与 CI 基线”落地；建议下一个提交中：
   - 已在 CI 中加入 JS/TS 覆盖率（c8 text-summary + lcov）。
   - 已引入 ESLint/Prettier；若后续需要更严格规则，可扩展配置。
+
+### Completion Notes
+**Completed:** 2025-10-20
+**Definition of Done:** All acceptance criteria met, code reviewed, tests passing, CI green, merged to main.
 
 ### File List
 

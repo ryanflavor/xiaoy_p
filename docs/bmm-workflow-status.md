@@ -10,8 +10,8 @@
 ## Workflow Status Tracker
 
 **Current Phase:** 3-Solutioning - Complete
-**Current Workflow:** dev-story (Story 1.1) - Ready for Review
-**Current Agent:** SM
+**Current Workflow:** dev-story (Story 1.2) - In Progress
+**Current Agent:** DEV
 **Overall Progress:** 35%
 
 ### Phase Completion Status
@@ -39,8 +39,8 @@
 | 4-Implementation | dev-story (iterative) | DEV | Implement stories | Planned |
 | 4-Implementation | story-approved | DEV | Mark complete, advance queue | Planned |
 
-**Current Step:** dev-story (Story 1.1) - Ready for Review
-**Next Step:** story-approved (DEV)
+**Current Step:** dev-story (DEV) - In Progress (Story 1.2)
+**Next Step:** story-approved (DEV) for 1.2
 
 **Instructions:**
 
@@ -54,10 +54,11 @@
 **Story Tracking:** Initialized
 
 - STORIES_SEQUENCE: ["1.1","1.2","1.3","1.4","1.5","1.6","1.7","2.1","2.2","2.3","2.4","2.5","2.6","3.1","3.2","3.3","3.4","3.5","4.1","4.2","4.3","4.4","4.5","4.6","5.1","5.2","5.3","5.4","5.5","5.6","5.7"]
-- TODO_STORY: 1.2
-- TODO_TITLE: NATS→WS 网关最小链路
-- IN_PROGRESS_STORY: 1.1
-- IN_PROGRESS_TITLE: 仓库与 CI 基线
+- STORIES_DONE: ["1.1"]
+- IN_PROGRESS_STORY: 1.2
+- IN_PROGRESS_TITLE: NATS→WS 网关最小链路
+- TODO_STORY: 1.3
+- TODO_TITLE: 单连接 + SharedWorker 骨架
 
 ### Artifacts Generated
 
@@ -71,15 +72,15 @@
 | Cohesion Report | Complete | docs/cohesion-check-report.md | 2025-10-20 |
 | Epic Alignment Matrix | Complete | docs/epic-alignment-matrix.md | 2025-10-20 |
 | Tech Specs (Epics 1..5) | Complete | docs/tech-spec-epic-*.md | 2025-10-20 |
-| Story 1.1 (ContextReadyDraft) | In Progress | docs/stories/story-1.1.md | 2025-10-20 |
+| Story 1.1 (Merged) | Complete | docs/stories/story-1.1.md | 2025-10-20 |
 | Story 1.1 Context | Complete | docs/stories/story-context-1.1.xml | 2025-10-20 |
 
 
 ### Next Action Required
 
-**What to do next:** 完成实现并提交评审（story-approved）
+**What to do next:** 实施 story 1.2（dev-story）
 
-**Command to run:** bmad dev story-approved
+**Command to run:** bmad dev dev-story
 
 **Agent to load:** DEV
 
