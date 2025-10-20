@@ -2,46 +2,36 @@
 // Minimal lint: fail on tabs or trailing spaces in JS/JSON/YAML files
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { extname } from 'node:path';
 
-const rg = (pattern) => {
+const roots = ['tools', 'packages', 'apps', 'services', 'package.json', 'pnpm-workspace.yaml'];
+const globs = new Set(['.js', '.jsx', '.ts', '.tsx', '.json', '.yml', '.yaml', '.md']);
+
+function listFiles() {
   try {
-    const cmd = `rg -n --glob '!**/.git/**' --glob '!node_modules/**' "${pattern}"`;
-    execSync(cmd, { stdio: 'pipe' }).toString();
-    return true;
-  } catch (e) {
-    return false;
+    const out = execSync(`git ls-files -- ${roots.join(' ')}`, { stdio: 'pipe' }).toString();
+    return out.split('\n').filter(Boolean);
+  } catch {
+    return [];
   }
-};
+}
 
 let failed = false;
-
-// Scan a limited set of paths to avoid flagging legacy docs
-const PATHS = [
-  'tools',
-  'packages',
-  'apps',
-  'package.json',
-  'pnpm-workspace.yaml'
-].join(' ');
-
-// Trailing spaces
-try {
-  execSync(`rg -n --glob '!**/.git/**' --glob '!node_modules/**' '[ \t]+$' ${PATHS}`, { stdio: 'pipe' });
-  // If command exits 0, matches found
-  console.error('lint: trailing whitespace found.');
-  failed = true;
-} catch {}
-
-// Tabs in source files
-try {
-  execSync(`rg -n --glob '!**/.git/**' --glob '!node_modules/**' '\\t' --iglob '**/*.{js,jsx,ts,tsx,json,yml,yaml,md}' ${PATHS}`, { stdio: 'pipe' });
-  console.error('lint: tab characters found.');
-  failed = true;
-} catch {}
-
-if (failed) {
-  process.exit(1);
-} else {
-  console.log('lint: ok');
+for (const f of listFiles()) {
+  if (!globs.has(extname(f))) continue;
+  const text = readFileSync(f, 'utf8');
+  const lines = text.split('\n');
+  lines.forEach((line, idx) => {
+    if (/\s+$/.test(line)) {
+      console.error(`lint: trailing whitespace ${f}:${idx + 1}`);
+      failed = true;
+    }
+    if (/\t/.test(line)) {
+      console.error(`lint: tab character ${f}:${idx + 1}`);
+      failed = true;
+    }
+  });
 }
+
+if (failed) process.exit(1);
+console.log('lint: ok');

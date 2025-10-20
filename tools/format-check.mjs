@@ -1,33 +1,34 @@
 #!/usr/bin/env node
-// Minimal format check: ensure .editorconfig rules satisfied for LF and EOF newline
+// Minimal format check: ensure LF endings and final newline per .editorconfig
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { extname } from 'node:path';
 
+const exts = new Set(['.js', '.mjs', '.cjs', '.json', '.md', '.yml', '.yaml', '.ts', '.tsx']);
+const roots = ['tools', 'packages', 'apps', 'services', 'package.json', 'pnpm-workspace.yaml'];
+
+function listFiles() {
+  try {
+    const out = execSync(`git ls-files -- ${roots.join(' ')}`, { stdio: 'pipe' }).toString();
+    return out.split('\n').filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 let failed = false;
-
-const files = execSync("rg --files --glob '!**/.git/**' --glob '!node_modules/**' tools packages apps package.json pnpm-workspace.yaml", { stdio: 'pipe' })
-  .toString()
-  .split('\n')
-  .filter(Boolean)
-  .filter(f => ['.js','.mjs','.cjs','.json','.md','.yml','.yaml','.ts','.tsx'].includes(extname(f)));
-
-for (const f of files) {
+for (const f of listFiles()) {
+  if (!exts.has(extname(f))) continue;
   const buf = readFileSync(f);
-  // Check LF
   if (buf.includes('\r\n')) {
     console.error(`format: CRLF detected in ${f}`);
     failed = true;
   }
-  // Check final newline
   if (buf.length && buf[buf.length - 1] !== 0x0a) {
     console.error(`format: missing final newline in ${f}`);
     failed = true;
   }
 }
 
-if (failed) {
-  process.exit(1);
-} else {
-  console.log('format: ok');
-}
+if (failed) process.exit(1);
+console.log('format: ok');
