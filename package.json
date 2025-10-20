@@ -20,7 +20,7 @@
     "test:vitest": "vitest run --reporter=verbose"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.11.0"
   },
   "devDependencies": {
     "c8": "^9.1.0",
