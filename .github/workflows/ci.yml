@@ -41,8 +41,12 @@ jobs:
           python-version: '3.10'
       - name: Install uv
         run: pip install uv
+      - name: Create venv
+        run: uv venv
       - name: Install test deps
-        run: uv pip install -r packages/pycore/requirements-dev.txt
+        run: |
+          uv pip install -r packages/pycore/requirements-dev.txt
+          uv pip install -e packages/pycore
       - name: Run pytest (uv)
         run: uv run -m pytest -q packages/pycore
 
