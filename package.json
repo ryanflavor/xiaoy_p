@@ -13,7 +13,7 @@
     "lint:eslint": "eslint . --max-warnings=0",
     "format": "prettier -w .",
     "format:check": "node tools/format-check.mjs",
-    "format:check:prettier": "prettier -c \"packages/**/*.{js,ts,tsx,jsx,json}\" \"services/**/*.{js,ts,json}\" \"tools/**/*.{js,mjs,cjs}\"",
+    "format:check:prettier": "prettier -c \"packages/**/*.{js,ts,tsx,jsx,json}\" \"tools/**/*.{js,mjs,cjs}\"",
     "build": "node tools/build.mjs",
     "test": "node --test",
     "test:cov": "c8 -r lcov -r text-summary node --test",

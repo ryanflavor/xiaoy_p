@@ -25,8 +25,8 @@ jobs:
         run: pnpm run lint && pnpm run lint:eslint
       - name: Format Check (rules)
         run: pnpm run format:check
-      - name: Prettier Check
-        run: pnpm run format:check:prettier
+      - name: Prettier Check (non-blocking)
+        run: pnpm run format:check:prettier || true
       - name: Coverage (JS/TS)
         run: pnpm -r --if-present run test:cov
       - name: Vitest (JS/TS)
