@@ -7,5 +7,8 @@
     "test": "node --test test/index.test.js",
     "test:cov": "c8 -r lcov -r text-summary node --test",
     "test:vitest": "vitest run --reporter=verbose"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.4"
   }
 }
