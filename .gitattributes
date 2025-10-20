@@ -1,0 +1,5 @@
+* text=auto eol=lf
+
+# Prevent linguist from counting vendor assets if added later
+docs/** linguist-documentation
+

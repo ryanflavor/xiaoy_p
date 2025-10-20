@@ -1,0 +1,11 @@
+[project]
+name = "pycore"
+version = "0.1.0"
+description = "xiaoy python core utilities"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+

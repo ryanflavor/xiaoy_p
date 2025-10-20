@@ -2,23 +2,23 @@
 
 **Project:** xiaoy
 **Created:** 2025-10-17
-**Last Updated:** 2025-10-17
+**Last Updated:** 2025-10-20
 **Status File:** `bmm-workflow-status.md`
 
 ---
 
 ## Workflow Status Tracker
 
-**Current Phase:** Workflow Definition
-**Current Workflow:** brainstorm-project - Complete
-**Current Agent:** Analyst
-**Overall Progress:** 5%
+**Current Phase:** 3-Solutioning - Complete
+**Current Workflow:** dev-story (Story 1.1) - Ready for Review
+**Current Agent:** SM
+**Overall Progress:** 35%
 
 ### Phase Completion Status
 
-- [ ] **1-Analysis** - Research, brainstorm, brief (optional)
-- [ ] **2-Plan** - PRD/GDD/Tech-Spec + Stories/Epics
-- [ ] **3-Solutioning** - Architecture + Tech Specs (Level 2+ only)
+- [x] **1-Analysis** - Research, brainstorm, brief (optional)
+- [x] **2-Plan** - PRD/GDD/Tech-Spec + Stories/Epics
+- [x] **3-Solutioning** - Architecture + Tech Specs (Level 2+ only)
 - [ ] **4-Implementation** - Story development and delivery
 
 ### Planned Workflow Journey
@@ -29,9 +29,9 @@
 | ----- | ---- | ----- | ----------- | ------ |
 | 1-Analysis | brainstorm-project | Analyst | Explore software solution ideas | Planned |
 | 1-Analysis | research (optional) | Analyst | Market/technical research | Optional |
-| 1-Analysis | product-brief | Analyst | Strategic product foundation | Planned |
-| 2-Plan | TBD - Level 0-1 → tech-spec, Level 2-4 → prd | PM or Architect | Workflow determined after level assessment | Conditional |
-| 2-Plan | ux-spec | PM | UX/UI specification (user flows, wireframes, components) | Planned |
+| 1-Analysis | product-brief | Analyst | Strategic product foundation | Complete |
+| 2-Plan | TBD - Level 0-1 → tech-spec, Level 2-4 → prd | PM or Architect | Workflow determined after level assessment | Complete |
+| 2-Plan | ux-spec | PM | UX/UI specification (user flows, wireframes, components) | Complete |
 | 3-Solutioning | TBD - depends on level from Phase 2 | Architect | Required if Level 3-4, skipped if Level 0-2 | Conditional |
 | 4-Implementation | create-story (iterative) | SM | Draft stories from backlog | Planned |
 | 4-Implementation | story-ready | SM | Approve story for dev | Planned |
@@ -39,8 +39,8 @@
 | 4-Implementation | dev-story (iterative) | DEV | Implement stories | Planned |
 | 4-Implementation | story-approved | DEV | Mark complete, advance queue | Planned |
 
-**Current Step:** brainstorm-project
-**Next Step:** brainstorm-project (Analyst agent)
+**Current Step:** dev-story (Story 1.1) - Ready for Review
+**Next Step:** story-approved (DEV)
 
 **Instructions:**
 
@@ -51,21 +51,37 @@
 
 ### Implementation Progress (Phase 4 Only)
 
-**Story Tracking:** Not started
+**Story Tracking:** Initialized
+
+- STORIES_SEQUENCE: ["1.1","1.2","1.3","1.4","1.5","1.6","1.7","2.1","2.2","2.3","2.4","2.5","2.6","3.1","3.2","3.3","3.4","3.5","4.1","4.2","4.3","4.4","4.5","4.6","5.1","5.2","5.3","5.4","5.5","5.6","5.7"]
+- TODO_STORY: 1.2
+- TODO_TITLE: NATS→WS 网关最小链路
+- IN_PROGRESS_STORY: 1.1
+- IN_PROGRESS_TITLE: 仓库与 CI 基线
 
 ### Artifacts Generated
 
 | Artifact | Status | Location | Date |
 | -------- | ------ | -------- | ---- |
+| Product Brief | Complete | docs/product-brief.md | 2025-10-20 |
+| PRD | Complete | docs/PRD.md | 2025-10-20 |
+| Epic Breakdown | Complete | docs/epics.md | 2025-10-20 |
+| Executive Brief | Complete | docs/product-brief-executive-xiaoy-2025-10-20.md | 2025-10-20 |
+| Solution Architecture | Complete | docs/solution-architecture.md | 2025-10-20 |
+| Cohesion Report | Complete | docs/cohesion-check-report.md | 2025-10-20 |
+| Epic Alignment Matrix | Complete | docs/epic-alignment-matrix.md | 2025-10-20 |
+| Tech Specs (Epics 1..5) | Complete | docs/tech-spec-epic-*.md | 2025-10-20 |
+| Story 1.1 (ContextReadyDraft) | In Progress | docs/stories/story-1.1.md | 2025-10-20 |
+| Story 1.1 Context | Complete | docs/stories/story-context-1.1.xml | 2025-10-20 |
 
 
 ### Next Action Required
 
-**What to do next:** Review brainstorming results and run research (optional) or product-brief
+**What to do next:** 完成实现并提交评审（story-approved）
 
-**Command to run:** bmad analyst product-brief
+**Command to run:** bmad dev story-approved
 
-**Agent to load:** Analyst
+**Agent to load:** DEV
 
 ---
 
@@ -74,7 +90,7 @@
 ### Project Classification
 
 - **Project Type:** web (Web Application)
-- **Project Level:** TBD
+- **Project Level:** 3
 - **Instruction Set:** default
 - **Greenfield/Brownfield:** greenfield
 
@@ -106,8 +122,9 @@
 
 ### Next Actions
 
-- Run: bmad analyst brainstorm-project
-- After completion, re-run: bmad analyst workflow-status
+- Run: bmad pm prd   （Level 2–4）
+- 或：bmad pm tech-spec   （Level 0–1）
+- 完成后，运行：bmad pm workflow-status（查看后续建议）
 
 ## Special Considerations
 

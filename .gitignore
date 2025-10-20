@@ -1,0 +1,15 @@
+# Node
+node_modules/
+*.log
+coverage/
+dist/
+
+# Editor/OS
+.DS_Store
+.idea/
+.vscode/
+
+# Env
+.env
+
+yueweioption_xiaoydb/
