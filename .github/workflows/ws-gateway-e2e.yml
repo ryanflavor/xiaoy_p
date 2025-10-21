@@ -1,0 +1,47 @@
+name: ws-gateway-e2e
+
+on:
+  pull_request:
+    paths:
+      - 'services/ws-gateway/**'
+      - '.github/workflows/ws-gateway-e2e.yml'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'services/ws-gateway/**'
+      - '.github/workflows/ws-gateway-e2e.yml'
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [ default, tls_jwks ]
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Docker info
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Install service deps
+        run: npm install --no-audit --no-fund
+        working-directory: services/ws-gateway
+
+      - name: Run demo e2e (matrix)
+        env:
+          DEMO_TLS: ${{ matrix.mode == 'tls_jwks' && '1' || '0' }}
+          DEMO_JWKS: ${{ matrix.mode == 'tls_jwks' && '1' || '0' }}
+        run: npm run demo:e2e
+        working-directory: services/ws-gateway

@@ -66,9 +66,9 @@ Status: Done
 
 ### References
 
-- docs/epics.md: Epic 1 → Story 1.1（验收标准与动机）
-- docs/PRD.md: Goals/Requirements（FR019、FR011 相关）
-- docs/solution-architecture.md: 技术栈与组件目录建议
+- Source: docs/epics.md （Epic 1 → Story 1.1）
+- Source: docs/PRD.md#requirements （FR019、FR011）
+- Source: docs/solution-architecture.md#11-component-and-integration-overview （技术栈/组件）
 
 ## Change Log
 
@@ -78,6 +78,7 @@ Status: Done
 | 2025-10-20 | dev-story：建立工作区与最小 CI/测试，提交基础文档与脚本 | ryan |
 | 2025-10-20 | dev-story：新增 c8 覆盖率、ESLint/Prettier、Python(uv+pytest) 基线与 CI | ryan |
 | 2025-10-20 | 标记为 Ready for Review | ryan |
+| 2025-10-20 | CI：增加 build 步骤（node tools/build.mjs） | ryan |
 
 ## Dev Agent Record
 
@@ -88,7 +89,7 @@ Status: Done
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+BMAD-CORE
 
 ### Debug Log References
 

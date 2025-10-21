@@ -1,0 +1,9 @@
+# Local/ephemeral demo artifacts
+.demo_*.pem
+.demo_token.txt
+.demo_jwks.json
+.secrets/
+.env.local
+node_modules/
+dist/
+*.log
