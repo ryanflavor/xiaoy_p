@@ -24,6 +24,8 @@ export const configSchema = z.object({
   // Auth
   JWT_JWKS_URL: z.string().optional(),
   JWT_PUBLIC_KEY: z.string().optional(), // PEM (SPKI)
+  JWT_ALLOWED_AUD: z.string().optional(), // CSV
+  JWT_ALLOWED_ISS: z.string().optional(), // CSV
   ALLOWED_ORIGINS: z.string().default('*'), // CSV or '*'
 
   // ACL
@@ -46,6 +48,8 @@ export type AppConfig = z.infer<typeof configSchema> & {
   };
   allowedOrigins: string[] | '*';
   whitelist: string[];
+  allowedAud?: string[];
+  allowedIss?: string[];
 };
 
 export function loadConfig(env = process.env): AppConfig {
@@ -89,6 +93,13 @@ export function loadConfig(env = process.env): AppConfig {
     };
   }
 
+  // Parse allowed audience/issuer lists if provided
+  if (base.JWT_ALLOWED_AUD) {
+    cfg.allowedAud = base.JWT_ALLOWED_AUD.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  if (base.JWT_ALLOWED_ISS) {
+    cfg.allowedIss = base.JWT_ALLOWED_ISS.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
   return cfg;
 }
-

@@ -29,11 +29,19 @@ NATS_URLS=nats://localhost:4222
 WS_SUBJECT_WHITELIST=xy.md.*
 ALLOWED_ORIGINS=*
 JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----..."
+JWT_ALLOWED_AUD=            # CSV audience whitelist (optional)
+JWT_ALLOWED_ISS=            # CSV issuer whitelist (optional)
+DIAGNOSTIC_METRICS=false    # if true, exposes per-connection queue metric labels
 ```
 
 Security defaults:
 - permessage-deflate: disabled by default
 - maxPayload: 1 MiB
+
+Production guidance:
+- Do NOT use `ALLOWED_ORIGINS=*` in production; set to CSV of trusted origins.
+- Prefer `JWT_JWKS_URL`; if using static key, rotate regularly.
+- Keep `DIAGNOSTIC_METRICS=false` unless troubleshooting to avoid high label基数。
 
 See `docker-compose.yml` for a local NATS + gateway setup and `examples/publish.mjs` for publishing demo messages.
 
