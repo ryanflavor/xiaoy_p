@@ -1,0 +1,5 @@
+{
+  "fps": { "p95Min": 55 },
+  "e2eLatencyMs": { "p95Max": 120, "p99Max": 180, "budgetWindow": 60000, "budgetAllowed": 5 }
+}
+

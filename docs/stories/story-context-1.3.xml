@@ -1,0 +1,73 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>3</storyId>
+    <title>单连接 + SharedWorker 骨架</title>
+    <status>Draft</status>
+    <generatedAt>2025-10-21</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-1.3.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>Trader</asA>
+    <iWant>通过 SharedWorker 维护单一 WebSocket 连接并向多标签页扇出</iWant>
+    <soThat>多标签共享订阅，提升一致性并降低资源占用与掉帧</soThat>
+    <tasks>
+      SharedWorker 骨架、批处理合并去重、断线指数回退与并发上限、自检与前端指标。
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    1) 单条 WebSocket；多标签扇出，无额外连接。
+    2) 16–33ms 批处理合并/去重；4–5 标签并开时每帧 ≤ 8ms。
+    3) 断线指数回退 + 并发上限；≤ 3s 恢复；自检/健康报告与慢消费者事件记录。
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      docs/epics.md (Epic 1 → Story 1.3);
+      docs/tech-spec-epic-1.md (AC#1,2,7,9);
+      docs/PRD.md (FR003, FR004, FR005, FR007, FR013–FR015);
+      docs/solution-architecture.md (端到端链路/指标/安全基线)
+    </docs>
+    <code>
+      services/ws-gateway (消费/指标对齐；由 1.2 交付)；
+      apps/ui/src/worker/shared (本故事新增)；
+      apps/ui/src/lib/bus (本故事新增)；
+      apps/ui/src/lib/merge (本故事新增)；
+      apps/ui/src/lib/metrics (本故事新增)
+    </code>
+    <dependencies>
+      Node 22.11；TypeScript 5.9；ws 8.18；nats.js 2.28；prom-client 15.1（网关侧）；
+      前端：React 19；Zustand 5；TanStack Table 8（面板，后续故事使用）
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    仅消费 xy.md.* 前缀；JWT/NKey 与主题级 ACL；如启用 SAB，COOP/COEP 自检必须 100% 通过；
+    背压/慢消费者触发降级钩子（采样降频/字段裁剪/停更）；
+    端到端预算：P95 &lt; 120ms / P99 &lt; 180ms；UI 每帧 ≤ 8ms。
+  </constraints>
+
+  <interfaces>
+    NATS 主题：xy.md.tick.{group}[.{shard}]、xy.md.snapshot.{group}；
+    HTTP：/healthz、/metrics（网关）；
+    前端通信：BroadcastChannel/MessagePort。
+  </interfaces>
+
+  <tests>
+    <standards>
+      单元/集成/e2e/性能：参照 Tech Spec “Test Strategy Summary”，前端使用 Vitest + jsdom/Playwright（建议）。
+    </standards>
+    <locations>
+      apps/ui/src/**/__tests__/**；apps/ui/e2e/**；services/ws-gateway/test/**。
+    </locations>
+    <ideas>
+      AC1：新开标签不新增 WS；
+      AC2：批处理 16–33ms；4–5 标签并开时 FPS≥60 与帧预算；
+      AC3：断线恢复 ≤3s；并发上限与退避曲线；慢消费者事件与降级链路验证。
+    </ideas>
+  </tests>
+</story-context>
+

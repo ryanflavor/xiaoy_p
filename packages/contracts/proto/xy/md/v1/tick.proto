@@ -1,0 +1,12 @@
+syntax = "proto3";
+package xy.md.v1;
+
+// Incremental tick message (append-only evolution)
+message Tick {
+  int64 ts_ms = 1;           // event timestamp (ms)
+  string symbol = 2;         // instrument symbol
+  double price = 3;          // last price
+  uint64 volume = 4;         // last size (optional semantics)
+  // Add new optional fields with new tags only; never reuse numbers
+}
+

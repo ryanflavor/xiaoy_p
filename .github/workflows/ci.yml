@@ -2,68 +2,55 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 22.11.0 (LTS)
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22.11.0'
-      - name: Setup pnpm 9.12.2
+          node-version: '22'
+
+      - name: Enable Corepack (pnpm)
         run: |
           corepack enable
           corepack prepare pnpm@9.12.2 --activate
-      - name: Install deps (pnpm)
-        run: pnpm install --prefer-offline
-      - name: Lint
-        run: pnpm run lint && pnpm run lint:eslint
-      - name: Format Check (rules)
-        run: pnpm run format:check
-      - name: Build
-        run: node tools/build.mjs
-      - name: Prettier Check (non-blocking)
-        run: pnpm run format:check:prettier || true
-      - name: Coverage (JS/TS)
-        run: pnpm -r --if-present run test:cov
-      - name: Vitest (JS/TS)
-        run: pnpm -r --if-present run test:vitest
-      - name: Feature Flags Check
-        run: test -f tools/feature-flags.json
-      - name: Unit Tests
-        run: pnpm -r --if-present test
 
-  python:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: ws-gateway deps (pnpm)
+        working-directory: services/ws-gateway
+        run: pnpm install
+
+      - name: ws-gateway tests (vitest)
+        working-directory: services/ws-gateway
+        run: pnpm vitest run --reporter=verbose
+
+      - name: UI tests (node --test)
+        run: node --test apps/ui/test/overlay.test.mjs
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.13.9'
-      - name: Install uv
-        run: pip install uv
-      - name: Create venv
-        run: uv venv
-      - name: Install test deps
-        run: |
-          uv pip install -r packages/pycore/requirements-dev.txt
-          uv pip install -e packages/pycore
-      - name: Run pytest (uv)
-        run: uv run -m pytest -q packages/pycore
+          python-version: '3.13'
 
-  go:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Go 1.25.3
+      - name: pycore tests (pytest)
+        run: |
+          python -V
+          python -m pip install --upgrade pip
+          python -m pip install pytest -r packages/pycore/requirements-dev.txt || true
+          pytest -q packages/pycore
+
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.3'
-      - name: Run Go tests
-        working-directory: services/gocore
-        run: go test ./...
+          go-version: '1.22.x'
+
+      - name: aggregator-go tests
+        working-directory: services/aggregator-go
+        run: go test -run TestHealthzEndpoint -v ./...

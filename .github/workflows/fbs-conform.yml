@@ -1,0 +1,38 @@
+name: fbs-conform
+on:
+  pull_request:
+    paths:
+      - 'packages/contracts/fbs/**.fbs'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install flatbuffers compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatbuffers-compiler
+          flatc --version
+      - name: Run conform checks vs base ref
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          REF="${BASE_SHA:-main}"
+          echo "Using base ref: $REF"
+          # Iterate all current FBS files and compare with base ref if exists
+          shopt -s globstar
+          for f in packages/contracts/fbs/**/*.fbs; do
+            [ -f "$f" ] || continue
+            base_file="/tmp/base_$(echo "$f" | tr '/' '_')"
+            if git show "$REF:$f" > "$base_file" 2>/dev/null; then
+              echo "Conform: $base_file -> $f"
+              flatc --conform "$base_file" "$f"
+            else
+              echo "No base file for $f at $REF; skipping conform"
+            fi
+          done
+

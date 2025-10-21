@@ -10,16 +10,16 @@
 ## Workflow Status Tracker
 
 **Current Phase:** 3-Solutioning - Complete
-**Current Workflow:** dev-story (Story 1.3) - In Progress
+**Current Workflow:** dev-story (Story 1.6) - In Progress
 **Current Agent:** DEV
-**Overall Progress:** 48%
+**Overall Progress:** 45%
 
 ### Phase Completion Status
 
 - [x] **1-Analysis** - Research, brainstorm, brief (optional)
 - [x] **2-Plan** - PRD/GDD/Tech-Spec + Stories/Epics
 - [x] **3-Solutioning** - Architecture + Tech Specs (Level 2+ only)
-- [x] **4-Implementation** - Story development and delivery
+- [ ] **4-Implementation** - Story development and delivery
 
 ### Planned Workflow Journey
 
@@ -39,8 +39,8 @@
 | 4-Implementation | dev-story (iterative) | DEV | Implement stories | Planned |
 | 4-Implementation | story-approved | DEV | Mark complete, advance queue | Planned |
 
-**Current Step:** dev-story (DEV) - In Progress (Story 1.3)
-**Next Step:** story-approved (DEV) for 1.3
+**Current Step:** dev-story (DEV) - In Progress (Story 1.6)
+**Next Step:** story-approved (DEV) for 1.6
 
 **Instructions:**
 
@@ -54,11 +54,11 @@
 **Story Tracking:** Initialized
 
 - STORIES_SEQUENCE: ["1.1","1.2","1.3","1.4","1.5","1.6","1.7","2.1","2.2","2.3","2.4","2.5","2.6","3.1","3.2","3.3","3.4","3.5","4.1","4.2","4.3","4.4","4.5","4.6","5.1","5.2","5.3","5.4","5.5","5.6","5.7"]
-- STORIES_DONE: ["1.1","1.2"]
-- IN_PROGRESS_STORY: 1.3
-- IN_PROGRESS_TITLE: 单连接 + SharedWorker 骨架
-- TODO_STORY: 1.4
-- TODO_TITLE: 契约与代码生成（Proto/FBS + Registry）
+- STORIES_DONE: ["1.1","1.2","1.3","1.4","1.5"]
+- IN_PROGRESS_STORY: 1.6
+- IN_PROGRESS_TITLE: ~
+- TODO_STORY: 1.7
+- TODO_TITLE: ~
 
 ### Artifacts Generated
 
@@ -77,12 +77,17 @@
 | Story 1.2 (Approved) | Complete | docs/stories/story-1.2.md | 2025-10-21 |
 | Story 1.2 Context | Complete | docs/stories/story-context-1.2.xml | 2025-10-21 |
 
+| Story 1.3 (Draft) | Drafted | docs/stories/story-1.3.md | 2025-10-21 |
+| Story 1.3 Context | Generated | docs/stories/story-context-1.3.xml | 2025-10-21 |
+| Story 1.5 (Done) | Complete | docs/stories/story-1.5.md | 2025-10-21 |
+| Story 1.5 Context | Complete | docs/stories/story-context-1.5.xml | 2025-10-21 |
+
 
 ### Next Action Required
 
-**What to do next:** 实施 story 1.3（dev-story）
+**What to do next:** 实现 story 1.6（dev-story）
 
-**Command to run:** bmad dev dev-story
+**Command to run:** dev-story
 
 **Agent to load:** DEV
 

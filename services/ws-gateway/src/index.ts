@@ -6,7 +6,7 @@ import pino from 'pino';
 import { connect, StringCodec, type NatsConnection, type Subscription } from 'nats';
 import { loadConfig } from './config.js';
 import { compileWhitelist, isSubjectAllowed } from './acl.js';
-import { metricsText, wsActiveConnections, wsMessagesDropped, wsMessagesForwarded, wsSendQueueSize, wsSlowConsumers, natsReconnects } from './metrics.js';
+import { metricsText, wsActiveConnections, wsMessagesDropped, natsReconnects, setWsActive, recordForwarded, recordSlowConsumer, updateQueueSize, removeQueueSize } from './metrics.js';
 import { OutboundQueue } from './queue.js';
 import { extractTokenFromHeaders, verifyJwt } from './jwt.js';
 import { wsServerOptions } from './wsconfig.js';
@@ -83,6 +83,8 @@ async function handleUpgrade(req: http.IncomingMessage, socket: any, head: Buffe
     await verifyJwt(token, {
       jwksUrl: cfg.JWT_JWKS_URL || undefined,
       publicKeyPemPathOrString: cfg.JWT_PUBLIC_KEY || undefined,
+      allowedAud: cfg.allowedAud,
+      allowedIss: cfg.allowedIss,
     });
 
     if (parsed.pathname !== cfg.WS_PATH) {
@@ -109,6 +111,11 @@ async function main() {
       })
     : http.createServer();
 
+  // Production safety notice
+  if ((process.env.NODE_ENV === 'production') && cfg.allowedOrigins === '*') {
+    log.warn('XYW010 ALLOWED_ORIGINS is "*" in production; set ALLOWED_ORIGINS to a CSV of trusted origins.');
+  }
+
   const wss = new WebSocketServer(wsServerOptions(cfg));
 
   server.on('upgrade', (req, socket, head) => handleUpgrade(req, socket, head, server, wss));
@@ -118,6 +125,7 @@ async function main() {
     const ctx: ClientCtx = { id, socket: ws, subs: [], queue: new OutboundQueue(cfg.WS_SEND_QUEUE_MAX) };
     clients.set(id, ctx);
     wsActiveConnections.inc();
+    setWsActive(clients.size);
     log.info({ id }, 'client connected');
 
     const nc = await connectNats();
@@ -144,7 +152,7 @@ async function main() {
                   wsMessagesDropped.labels({ reason: 'queue_full' }).inc();
                   continue;
                 }
-                wsSendQueueSize.labels({ conn: id }).set(ctx.queue.size());
+                updateQueueSize(id, ctx.queue.size());
                 flushQueue(ctx);
               }
             })().catch((e) => log.error({ e }, 'subscription loop error'));
@@ -160,7 +168,8 @@ async function main() {
       for (const s of ctx.subs) try { s.unsubscribe(); } catch {}
       clients.delete(id);
       wsActiveConnections.dec();
-      wsSendQueueSize.remove({ conn: id } as any);
+      setWsActive(clients.size);
+      removeQueueSize(id);
       log.info({ id }, 'client disconnected');
     });
   });
@@ -198,17 +207,17 @@ function flushQueue(ctx: ClientCtx) {
         if (err) {
           wsMessagesDropped.labels({ reason: 'send_error' }).inc();
         } else {
-          wsMessagesForwarded.inc();
+          recordForwarded();
         }
       });
     } catch {
       wsMessagesDropped.labels({ reason: 'send_throw' }).inc();
     }
   });
-  wsSendQueueSize.labels({ conn: ctx.id }).set(0);
+  updateQueueSize(ctx.id, 0);
   if (before > 0 && ctx.queue.size() === 0 && ctx.socket.bufferedAmount > 1024 * 1024) {
     // Basic slow consumer heuristic: buffered outgoing bytes exceed 1MiB
-    wsSlowConsumers.inc();
+    recordSlowConsumer();
   }
 }
 

@@ -1,0 +1,13 @@
+namespace xy.md;
+
+// FlatBuffers schema for incremental tick
+// Append-only: only add fields at the end with new ids
+table Tick {
+  ts_ms: long;
+  symbol: string;
+  price: double;
+  volume: ulong;
+}
+
+root_type Tick;
+

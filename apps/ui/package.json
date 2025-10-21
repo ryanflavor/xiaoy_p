@@ -1,0 +1,14 @@
+{
+  "name": "@xiaoy/ui",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test",
+    "demo": "node demo/server.mjs"
+  },
+  "devDependencies": {
+    "@xiaoy/ts-contracts": "workspace:*"
+  }
+}

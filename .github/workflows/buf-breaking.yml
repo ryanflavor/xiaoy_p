@@ -1,0 +1,29 @@
+name: buf-breaking
+on:
+  pull_request:
+    paths:
+      - 'packages/contracts/**'
+
+jobs:
+  breaking-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: bufbuild/buf-setup-action@v1
+      - name: Run buf breaking check (base ref if PR)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          REF="${BASE_SHA:-main}"
+          echo "Using base ref: $REF"
+          cd packages/contracts
+          # If base ref has no proto files (first introduction), skip breaking check
+          if ! git ls-tree -r "$REF" --name-only -- proto | grep -E '\\.proto$' >/dev/null 2>&1; then
+            echo "No .proto files found at base ref $REF; treating as initial schema introduction. Skipping breaking check."
+            exit 0
+          fi
+          # Otherwise compare current module against base
+          buf breaking --against "../../.git#ref=$REF" --error-format=github-actions
