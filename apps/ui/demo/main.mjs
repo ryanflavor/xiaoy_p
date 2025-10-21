@@ -65,8 +65,11 @@ port.onmessage = (e) => {
       const ts = (typeof payload === 'object' && payload && (payload.ts_server || payload.ts || payload.t))
       if (ts) {
         const now = Date.now()
-        const off = Number(window.__gwClockOffsetMs || 0)
-        try { e2eLatency.observe((now + off) - Number(ts)) } catch {}
+        let off = Number(window.__gwClockOffsetMs || 0)
+        let lat = (now + off) - Number(ts)
+        if (lat < -5) { off += Math.round(-lat); window.__gwClockOffsetMs = off; lat = 0 }
+        if (lat < 0) lat = 0
+        try { e2eLatency.observe(lat) } catch {}
       }
     } catch {
       out.textContent = String(msg.payload)
@@ -99,7 +102,11 @@ $('btnConnect').onclick = () => {
   try {
     const url = $('wsUrl')?.value?.trim()
     const token = $('wsToken')?.value?.trim()
-    if (url && token) port.postMessage({ kind: 'init', url, token })
+    if (url && token) {
+      calibrateClockFromHealthz(url).then((off)=>{ window.__gwClockOffsetMs = off }).finally(()=>{
+        try { port.postMessage({ kind: 'init', url, token }) } catch {}
+      })
+    }
   } catch {}
 })()
 $('btnHealth').onclick = () => port.postMessage({ kind: 'health' })
