@@ -46,7 +46,7 @@ jobs:
           python -m pip install -r packages/pycore/requirements-dev.txt || true
           python -m pip install pytest pytest-cov
           python -m pip install -e packages/pycore
-          pytest -q packages/pycore --cov=packages/pycore/src/pycore --cov-report=xml --cov-report=term
+          pytest -q packages/pycore --cov=packages/pycore/src/pycore --cov-report=xml --cov-report=term --cov-fail-under=80
 
       - name: Upload pycore coverage
         if: success()
