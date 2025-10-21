@@ -21,4 +21,4 @@ jobs:
           echo "Using base ref: $REF"
           cd packages/contracts
           # From module root, reference repository root .git via parent path
-          buf breaking --against "../.git#ref=$REF,subdir=packages/contracts" --error-format=github-actions
+          buf breaking --against "../../.git#ref=$REF,subdir=packages/contracts" --error-format=github-actions
