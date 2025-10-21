@@ -34,6 +34,18 @@ jobs:
       - name: UI tests (node --test)
         run: node --test apps/ui/test/overlay.test.mjs
 
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: pycore tests (pytest)
+        run: |
+          python -V
+          python -m pip install --upgrade pip
+          python -m pip install pytest -r packages/pycore/requirements-dev.txt || true
+          pytest -q packages/pycore
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
