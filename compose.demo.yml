@@ -59,13 +59,11 @@ services:
     environment:
       NATS_URL: nats://nats:4222
       SUBJECT: xy.md.tick.demo
+      INTERVAL_MS: "1"
     entrypoint: ["sh", "-lc"]
     command: |
       "npm i >/dev/null 2>&1 || true; \
-       while true; do \
-         node examples/publish.mjs \"demo-msg-$(date +%s)\"; \
-         sleep 1; \
-       done"
+       NATS_URL=$$NATS_URL SUBJECT=$$SUBJECT INTERVAL_MS=$$INTERVAL_MS node examples/publish-interval.mjs"
     depends_on:
       - nats
     profiles: ["demo"]

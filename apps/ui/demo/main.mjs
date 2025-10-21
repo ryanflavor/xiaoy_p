@@ -1,13 +1,34 @@
 import { createFpsMeter } from '../src/lib/metrics/metrics.mjs'
+import { uiFpsGauge, e2eLatency } from '../src/lib/metrics/api.mjs'
 
 const $ = (id) => document.getElementById(id)
 const hb = $('hb'), out = $('out'), health = $('health')
 const fpsEl = $('fps'), connEl = $('conn'), portsEl = $('ports')
+const rateEl = $('rate'), latpEl = $('latp')
 
 // Start FPS meter
 const meter = createFpsMeter()
 meter.start()
-setInterval(() => { fpsEl.textContent = String(meter.fps()) }, 250)
+setInterval(() => {
+  const v = meter.fps()
+  fpsEl.textContent = String(v)
+  try { uiFpsGauge.set(v) } catch {}
+}, 250)
+
+// Track message rate (msgs/sec) and e2e latency percentiles
+const recvTs = []
+function updateRateDisplay() {
+  const now = Date.now()
+  while (recvTs.length && now - recvTs[0] > 1000) recvTs.shift()
+  const rate = recvTs.length
+  if (rateEl) rateEl.textContent = String(rate)
+  // Update latency overlay display
+  try {
+    const stats = e2eLatency.stats()
+    if (stats && latpEl) latpEl.textContent = `${Math.round(stats.p50)}/${Math.round(stats.p95)}/${Math.round(stats.p99)}`
+  } catch {}
+}
+setInterval(updateRateDisplay, 250)
 
 // Start SharedWorker (fallback:提示不支持)
 if (typeof SharedWorker !== 'function') {
@@ -35,7 +56,17 @@ port.onmessage = (e) => {
     out.textContent = JSON.stringify(msg.payload, null, 2)
   } else if (msg.kind === 'ws') {
     try {
-      out.textContent = typeof msg.payload === 'string' ? msg.payload : JSON.stringify(msg.payload, null, 2)
+      const payload = msg.payload
+      const text = typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2)
+      out.textContent = text
+      // Record rate
+      recvTs.push(Date.now())
+      // Record latency if server timestamp available
+      const ts = (typeof payload === 'object' && payload && (payload.ts_server || payload.ts || payload.t))
+      if (ts) {
+        const now = Date.now()
+        try { e2eLatency.observe(now - Number(ts)) } catch {}
+      }
     } catch {
       out.textContent = String(msg.payload)
     }
