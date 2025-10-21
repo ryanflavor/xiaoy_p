@@ -19,5 +19,6 @@ jobs:
           set -euo pipefail
           REF="${BASE_SHA:-main}"
           echo "Using base ref: $REF"
-          # Run from repo root, target the contracts module path explicitly
-          buf breaking packages/contracts --against ".git#ref=$REF,subdir=packages/contracts" --error-format=github-actions
+          cd packages/contracts
+          # From module root, reference repository root .git via parent path
+          buf breaking --against "../.git#ref=$REF,subdir=packages/contracts" --error-format=github-actions

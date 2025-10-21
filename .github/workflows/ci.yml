@@ -40,4 +40,5 @@ jobs:
           go-version: '1.22.x'
 
       - name: aggregator-go tests
-        run: go test ./services/aggregator-go -run TestHealthzEndpoint -v
+        working-directory: services/aggregator-go
+        run: go test -run TestHealthzEndpoint -v ./...
