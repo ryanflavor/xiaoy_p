@@ -65,7 +65,8 @@ port.onmessage = (e) => {
       const ts = (typeof payload === 'object' && payload && (payload.ts_server || payload.ts || payload.t))
       if (ts) {
         const now = Date.now()
-        try { e2eLatency.observe(now - Number(ts)) } catch {}
+        const off = Number(window.__gwClockOffsetMs || 0)
+        try { e2eLatency.observe((now + off) - Number(ts)) } catch {}
       }
     } catch {
       out.textContent = String(msg.payload)
@@ -90,6 +91,7 @@ try {
 $('btnConnect').onclick = () => {
   const url = $('wsUrl').value || 'ws://localhost:8080/ws'
   const token = $('wsToken').value || ''
+  try { calibrateClockFromHealthz(url).then((off)=>{ console.log('clock offset(ms)=', off); window.__gwClockOffsetMs = off }).catch(()=>{}) } catch {}
   port.postMessage({ kind: 'init', url, token })
 }
 // Auto-connect if url+token prefilled (from query or previous state)
@@ -108,3 +110,31 @@ $('btnBroadcast').onclick = () => port.postMessage({ kind: 'broadcast', payload:
 $('btnReconnect').onclick = () => port.postMessage({ kind: 'disconnect' })
 
 window.addEventListener('beforeunload', () => port.postMessage({ kind: 'close' }))
+
+// --- Clock sync via /healthz Date header ---
+async function calibrateClockFromHealthz (wsUrl) {
+  try {
+    const u = new URL(wsUrl, location.href)
+    const http = (u.protocol === 'wss:') ? 'https:' : 'http:'
+    const base = `${http}//${u.hostname}${u.port ? ':'+u.port : ''}`
+    const target = `${base.replace(/\/$/, '')}/healthz`
+    let best = { rtt: Number.POSITIVE_INFINITY, off: 0 }
+    for (let i=0;i<3;i++) {
+      const t0 = Date.now()
+      const resp = await fetch(target, { method: 'GET', cache: 'no-store', mode: 'cors' })
+      const t3 = Date.now()
+      const dateHdr = resp.headers.get('date')
+      if (!dateHdr) continue
+      const ts = Date.parse(dateHdr)
+      const rtt = t3 - t0
+      const mid = t0 + rtt/2
+      const off = ts - mid
+      if (rtt < best.rtt) best = { rtt, off }
+      await new Promise(r=>setTimeout(r, 50))
+    }
+    window.__gwClockOffsetMs = best.off
+    return best.off
+  } catch (e) {
+    return 0
+  }
+}

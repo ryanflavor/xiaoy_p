@@ -51,10 +51,11 @@ async function connectNats(): Promise<NatsConnection> {
   return natsConn;
 }
 
+type SubEntry = { subject: string; sub: Subscription };
 type ClientCtx = {
   id: string;
   socket: WebSocket;
-  subs: Subscription[];
+  subs: SubEntry[];
   queue: OutboundQueue<Uint8Array>;
 };
 
@@ -134,8 +135,8 @@ async function main() {
       try {
         const msg = JSON.parse(data.toString());
         if (msg.type === 'subscribe' && Array.isArray(msg.subjects)) {
-          // Clear existing subscriptions first
-          for (const s of ctx.subs) try { s.unsubscribe(); } catch {}
+          // Clear existing subscriptions first; replace with provided list
+          for (const s of ctx.subs) try { s.sub.unsubscribe(); } catch {}
           ctx.subs = [];
           for (const subj of msg.subjects) {
             if (!isSubjectAllowed(subj, allowRes)) {
@@ -156,8 +157,24 @@ async function main() {
                 flushQueue(ctx);
               }
             })().catch((e) => log.error({ e }, 'subscription loop error'));
-            ctx.subs.push(sub);
+            ctx.subs.push({ subject: subj, sub });
           }
+          return;
+        }
+        if (msg.type === 'unsubscribe' && Array.isArray(msg.subjects)) {
+          // Remove only specified subjects; keep others
+          const targets = new Set<string>(msg.subjects);
+          const remain: SubEntry[] = [];
+          for (const s of ctx.subs) {
+            if (targets.has(s.subject)) {
+              try { s.sub.unsubscribe(); } catch {}
+              log.info({ id, subj: s.subject }, 'client unsubscribed');
+            } else {
+              remain.push(s);
+            }
+          }
+          ctx.subs = remain;
+          return;
         }
       } catch (e) {
         log.warn({ e }, 'invalid client message');
@@ -165,7 +182,7 @@ async function main() {
     });
 
     ws.on('close', () => {
-      for (const s of ctx.subs) try { s.unsubscribe(); } catch {}
+      for (const s of ctx.subs) try { s.sub.unsubscribe(); } catch {}
       clients.delete(id);
       wsActiveConnections.dec();
       setWsActive(clients.size);
@@ -178,12 +195,20 @@ async function main() {
     if (!req.url) return res.end();
     const { pathname } = url.parse(req.url);
     if (pathname === cfg.HEALTH_PATH) {
+      // CORS for dev tooling (allow demo UI to read Date header for clock sync)
+      res.setHeader('access-control-allow-origin', '*');
+      res.setHeader('access-control-expose-headers', 'date');
+      res.setHeader('date', new Date().toUTCString());
       const healthy = !!natsConn;
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify({ natsConnected: healthy, clients: clients.size }));
       return;
     }
     if (pathname === cfg.METRICS_PATH) {
+      // CORS for dev tooling
+      res.setHeader('access-control-allow-origin', '*');
+      res.setHeader('access-control-expose-headers', 'date');
+      res.setHeader('date', new Date().toUTCString());
       res.setHeader('content-type', 'text/plain; version=0.0.4');
       res.end(await metricsText());
       return;
