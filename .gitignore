@@ -47,6 +47,7 @@ pnpm-debug.log*
 *.der
 *.token
 *_token.txt
+*.pem.bak
 
 # Python artifacts
 **/__pycache__/

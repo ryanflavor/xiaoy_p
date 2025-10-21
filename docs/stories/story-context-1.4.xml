@@ -1,0 +1,167 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>4</storyId>
+    <title>契约与代码生成（Proto/FBS + Registry）</title>
+    <status>Ready</status>
+    <generatedAt>2025-10-21T06:29:23Z</generatedAt>
+    <generator>BMAD Story Context Workflow (#yolo)</generator>
+    <sourceStoryPath>docs/stories/story-1.4.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>开发团队（Enabler）</asA>
+    <iWant>以 Proto（快照）与 FBS（增量）定义统一契约并建立跨语言代码生成与版本治理</iWant>
+    <soThat>客户端与服务端遵循“仅追加（append-only）”策略安全演进并保持向后兼容</soThat>
+    <tasks>
+    <![CDATA[
+
+- [ ] 契约与版本治理（AC1）
+  - [ ] 初始化 `packages/contracts`：`proto/` 与 `fbs/` 目录、`buf.yaml` 与 breaking‑check 工作流
+  - [ ] 版本策略文档：append‑only 规则、弃用流程、语义化版本标注
+  - [ ] CI 集成：PR 上运行 `buf breaking` 与生成报告
+- [ ] 代码生成与集成（AC2）
+  - [ ] TypeScript 生成：`packages/ts-contracts` 发布；示例解码与未知字段打点
+  - [ ] Python 生成：`packages/py-contracts` 发布；示例解码与未知字段打点
+  - [ ] 消费方接入：`services/ws-gateway` 与 `apps/ui` 引用生成包
+- [ ] 兼容性测试（AC3）
+  - [ ] 添加/删除/重命名字段的正反用例；验证仅追加策略
+  - [ ] e2e 套件：旧版本生产者 + 新版本消费者（及反向）
+  - [ ] 指标验证：未知字段/降级事件被采集
+
+    ]]>
+  </tasks>
+  </story>
+
+  <acceptanceCriteria><![CDATA[
+
+1. 建立 Proto（快照）与 FBS（增量）契约基线与版本策略；CI 执行仅追加（append‑only）兼容检查（buf breaking‑check）。
+2. 生成 TypeScript 与 Python 代码；对未知字段保持容忍并记录指标/日志。
+3. 完成兼容性测试样例覆盖（正/反例），确保向后兼容。
+  ]]></acceptanceCriteria>
+
+  <artifacts>
+    <docs><![CDATA[
+<![CDATA[
+- docs/epics.md#L70-L90
+    I want a SharedWorker single-connection fanout,
+    So that tabs share one WS and subscriptions.
+    Trader 价值：多标签一致且更流畅，降低资源占用与掉帧。
+    Acceptance Criteria:
+    1. 单条 WS 连接建立，BroadcastChannel/MessagePort 扇出至多标签。
+    2. 订阅在 SharedWorker 合并/去重（16–33ms 批处理）。
+    3. 断线指数回退 + 并发上限；自检报告。
+    Prerequisites: 1.2
+    
+    **Story 1.4: 契约与代码生成（Proto/FBS + Registry）**
+    Enabler — 契约与代码生成（Proto/FBS + Registry）
+    I want schemas with codegen,
+    So that client/server evolve safely with append-only policy.
+    Trader 价值：减少版本不兼容导致的异常与停摆，提升变更可预期性。
+    Acceptance Criteria:
+    1. 快照 Proto、增量 FBS 基线与版本策略；CI 仅追加检查。
+    2. 生成 TS/Python 代码；未知字段容忍并打点。
+    3. 兼容测试样例覆盖。
+    Prerequisites: 1.1
+    
+    **Story 1.5: 端到端观测与指标浮层钩子**
+- docs/PRD.md#L45-L55
+    - FR005: 订阅/筛选/Top‑K 变更至可见 ≤ 500ms；SharedWorker 16–33ms 批量合并与去重。
+    - FR006: 多窗口（≥4）布局与状态保存；切换不引入额外连接或重复解码。
+    - FR007: Worker 解码 + OffscreenCanvas 增量绘制；渲染“时间预算”每帧 ≤ 8ms，超预算切片。
+    - FR008: UI 通道 at‑most‑once；丢帧/合并阈值与面板优先级可配置（高优先级保真）。
+    - FR009: 账户/风险 1–2s 节奏与阈值告警/熔断联动。
+    - FR010: 指令请求‑应答：幂等键、超时与重试上限；重复提交防护与审计打点。
+    - FR011: Schema Registry + TS/Python 代码生成；CI 强制“仅追加”兼容检查。
+    - FR012: Subject ACL 最小权限与主题级审计日志。
+    - FR013: 端到端观测：adapter→aggregator→WS→UI 埋点，输出 p50/p95/p99、慢消费者事件与近 N 窗口。
+    - FR014: 降级三级：采样降频→字段裁剪→面板停更；含恢复条件与用户提示。
+    - FR015: 会话恢复 ≤ 3s；版本单调性校验；不一致自动请求全量快照，失败进入只读降级并告警。
+- docs/solution-architecture.md#L1-L14
+    # Solution Architecture Document
+    
+    **Project:** xiaoy
+    **Date:** 2025-10-20
+    **Author:** ryan
+    
+    ## Executive Summary
+    
+    本项目为 yueweioption_xiaoydb 的架构重构版：保留 Python/vn.py 交易 API 与策略执行能力，全面替换 UI 与通信层为 Web + NATS 架构。总体目标是在 4–5 窗口并开的高吞吐场景下，维持 UI ≥ 60 FPS 与端到端 P95 < 120ms，同时实现“仅追加”的契约治理、可观测与可降级、以及单连接一致性（SharedWorker 扇出）。
+    
+    ## 1. Technology Stack and Decisions
+    
+    ### 1.1 Technology and Library Decision Table
+    
+- docs/tech-spec-epic-1.md#L160-L175
+    | -- | ------------- | --------- | --------- | ----------- |
+    | 1 | Detailed Design → Services/WS 网关；Workflows | ws-gateway, SharedWorker | WS | e2e: single-connection fanout |
+    | 2 | Detailed Design → Workflows；NFR/Performance | SharedWorker | WS | perf: worker batch budget |
+    | 3 | Detailed Design → Aggregator；APIs | aggregator-go | xy.src.*, xy.md.* | perf: tick/snapshot simulator |
+    | 4 | NFR/Performance | 全链路 | WS + NATS | e2e: latency probe & dashboards |
+    | 5 | NFR/Security | NATS + ws-gateway | JWT/NKey + ACL | sec: ACL negative/positive cases |
+    | 6 | NFR/Observability | ws-gateway, aggregator-go | /metrics | obs: prometheus scrape |
+    | 7 | NFR/Reliability | ws-gateway | WS | chaos: slow consumer & degrade |
+    | 8 | Data Models/Contracts | contracts | buf | ci: buf breaking-check pipeline |
+    | 9 | Workflows + NFR/Reliability | ws-gateway, SharedWorker | WS + xy.md.* | e2e: disconnect/rebuild tests |
+    | 10 | Security + Admin | ws-gateway | HTTP admin | sec: RBAC/admin audit tests |
+    
+    ## Risks, Assumptions, Open Questions
+    
+    - Risk：UI 慢消费者导致背压扩散 → 网关限流与优先级丢弃；触发 3 级降级并提示用户（记录事件）。
+    - Risk：聚合器分片/乱序修正策略不当 → 压测与回放基准验证；出现 gap 时自动告警。
+- docs/architecture-decisions.md#L1-L20
+    # Architecture Decision Records
+    
+    **Project:** xiaoy
+    **Date:** 2025-10-20
+    **Author:** ryan
+    
+    ---
+    
+    ## Overview
+    
+    This document captures all architectural decisions made during the solution architecture process. Each decision includes the context, options considered, chosen solution, and rationale.
+    
+    ---
+    
+    ## Decision Format
+    
+    Each decision follows this structure:
+    
+    ### ADR-NNN: [Decision Title]
+    
+]]><![CDATA[
+]]>
+    ]]></docs>
+    <code>
+<![CDATA[
+- packages/contracts (reason: 协议与版本治理，buf breaking-check，生成基线) #L1-L50
+- packages/ts-contracts (reason: TS 代码生成与示例解码) #L1-L30
+- packages/py-contracts (reason: Python 代码生成与示例解码) #L1-L30
+- services/ws-gateway (reason: 消费生成包并暴露 /metrics；未知字段容忍) #L10-L80
+- apps/ui (reason: SharedWorker 扇出与解码，指标采集对齐) #L20-L120
+]]>
+    </code>
+    <dependencies>
+- protoc, buf
+- Node 22.x, Go 1.22, Python 3.13
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+- Append-only 兼容策略（buf breaking-check）
+- 33ms 增量 + 2–5s 快照；断线 ≤1s 重建
+- JWT/NKey + Subject ACL 最小权限
+  </constraints>
+
+  <interfaces>
+- NATS: xy.md.tick.*, xy.md.snapshot.*
+- HTTP: /metrics, /admin/feature-flags
+  </interfaces>
+
+  <tests>
+    <standards>Unit/Integration/E2E/Perf；覆盖兼容性与未知字段守护</standards>
+    <locations>packages/*-contracts/tests, services/ws-gateway/test, apps/ui/tests</locations>
+    <ideas>旧→新/新→旧互操作矩阵；快照重建与延迟阈值；错误注入触发降级</ideas>
+  </tests>
+</story-context>

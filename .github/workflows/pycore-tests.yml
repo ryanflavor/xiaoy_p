@@ -1,0 +1,23 @@
+name: pycore-tests
+on:
+  pull_request:
+    paths:
+      - 'packages/pycore/**'
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install test deps
+        run: |
+          python -V
+          python -m pip install --upgrade pip
+          python -m pip install pytest -r packages/pycore/requirements-dev.txt || true
+      - name: Run unit tests (pytest)
+        run: |
+          pytest -q packages/pycore
+
