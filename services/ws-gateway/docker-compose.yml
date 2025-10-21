@@ -1,0 +1,30 @@
+services:
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js", "-DV"]
+  gateway:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: sh -lc "npm i && npm run dev"
+    environment:
+      - PORT=8080
+      - NATS_URLS=nats://nats:4222
+      - WS_SUBJECT_WHITELIST=xy.md.>
+      - ALLOWED_ORIGINS=*
+      - JWT_PUBLIC_KEY=/app/.demo_pub.pem
+      - JWT_JWKS_URL=${JWT_JWKS_URL}
+      - TLS_ENABLE=${TLS_ENABLE}
+      - TLS_CERT_PATH=${TLS_CERT_PATH}
+      - TLS_KEY_PATH=${TLS_KEY_PATH}
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      - nats
+  jwks:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: ["node", "/app/examples/jwks-server.mjs"]

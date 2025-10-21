@@ -1,7 +1,7 @@
 // ESLint flat config (v9+)
 export default [
   {
-    ignores: ['bmad/**', 'docs/**', 'node_modules/**']
+    ignores: ['bmad/**', 'docs/**', 'node_modules/**', 'services/ws-gateway/**']
   },
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
@@ -12,4 +12,3 @@ export default [
     rules: {}
   }
 ];
-

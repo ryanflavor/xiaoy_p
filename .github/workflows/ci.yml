@@ -25,6 +25,8 @@ jobs:
         run: pnpm run lint && pnpm run lint:eslint
       - name: Format Check (rules)
         run: pnpm run format:check
+      - name: Build
+        run: node tools/build.mjs
       - name: Prettier Check (non-blocking)
         run: pnpm run format:check:prettier || true
       - name: Coverage (JS/TS)

@@ -1,6 +1,6 @@
 # Story 1.1: 仓库与 CI 基线
 
-Status: Ready for Review
+Status: Done
 
 ## Story
 
@@ -66,9 +66,9 @@ Status: Ready for Review
 
 ### References
 
-- docs/epics.md: Epic 1 → Story 1.1（验收标准与动机）
-- docs/PRD.md: Goals/Requirements（FR019、FR011 相关）
-- docs/solution-architecture.md: 技术栈与组件目录建议
+- Source: docs/epics.md （Epic 1 → Story 1.1）
+- Source: docs/PRD.md#requirements （FR019、FR011）
+- Source: docs/solution-architecture.md#11-component-and-integration-overview （技术栈/组件）
 
 ## Change Log
 
@@ -78,6 +78,7 @@ Status: Ready for Review
 | 2025-10-20 | dev-story：建立工作区与最小 CI/测试，提交基础文档与脚本 | ryan |
 | 2025-10-20 | dev-story：新增 c8 覆盖率、ESLint/Prettier、Python(uv+pytest) 基线与 CI | ryan |
 | 2025-10-20 | 标记为 Ready for Review | ryan |
+| 2025-10-20 | CI：增加 build 步骤（node tools/build.mjs） | ryan |
 
 ## Dev Agent Record
 
@@ -88,7 +89,7 @@ Status: Ready for Review
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+BMAD-CORE
 
 ### Debug Log References
 
@@ -106,6 +107,10 @@ Status: Ready for Review
 - 2025-10-20 完成“仓库与 CI 基线”落地；建议下一个提交中：
   - 已在 CI 中加入 JS/TS 覆盖率（c8 text-summary + lcov）。
   - 已引入 ESLint/Prettier；若后续需要更严格规则，可扩展配置。
+
+### Completion Notes
+**Completed:** 2025-10-20
+**Definition of Done:** All acceptance criteria met, code reviewed, tests passing, CI green, merged to main.
 
 ### File List
 

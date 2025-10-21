@@ -9,86 +9,177 @@ Status: Draft
 
 ## Overview
 
-为 Web + NATS 架构奠定基础：建立单连接 WS 网关、SharedWorker 扇出、Aggregator-Go 的 33ms 增量/2–5s 快照通道，完成契约治理与观测基线。
+本 Epic 聚焦“单连接一致性 + 稳态可观测”的底座能力，直接支撑 PRD（2025-10-20）中的核心目标：在 4–5 个窗口并开与峰值 ~4k tick/s 情况下，保持 UI ≥ 60 FPS，端到端 P95 < 120ms、P99 < 180ms，并提供可降级与断线 ≤ 3s 恢复能力（见 PRD FR001–FR008、FR013–FR015）。方案依据《Solution Architecture》（2025-10-20）：以 NATS/JetStream 为消息中枢，聚合器（Go）按“33ms 增量 + 2–5s 快照”输出到 xy.md.*，经 WS 网关（Node）单连接转发至前端 SharedWorker 扇出，前端进行批量合并/去重与增量绘制。
+
+本 Epic 的交付形成后续 UI/策略模块的稳定地基：统一契约（Protobuf + buf 兼容检查）、最小可观测闭环（Prometheus 指标 + 慢消费者保护）、以及权限与安全基线（NATS Accounts、JWT/NKey、主题级 ACL、TLS）。
 
 ## Objectives and Scope
 
-- In: ws-gateway、SharedWorker、aggregator-go、contracts/buf、观测/安全基线
-- Out: 业务面板与策略执行细节
+In-Scope（本 Epic 完成）：
+- WS 网关最小链路（NATS → WS 单连接；TLS + JWT/NKey；主题 ACL）。
+- SharedWorker 单连接扇出骨架：16–33ms 批量合并与去重；断线指数回退与并发上限。
+- Aggregator-Go 33ms 增量/2–5s 快照通道与分片策略；快照重建 ≤ 1s。
+- 契约与代码生成：Protobuf + buf（append-only 检查）；TS/Go/Py 生成基线。
+- 可观测与降级：关键指标（连接数、速率、慢消费者、端到端延迟）与 3 级降级钩子。
+
+Out-of-Scope（后续 Epic/Story 交付）：
+- 业务面板细节与策略执行流程。
+- 多租户/多地域与复杂合规策略。
+- 高阶回放/审计 UI 与运营仪表进一步细化。
 
 ## System Architecture Alignment
 
-组件：services/ws-gateway、services/aggregator-go、packages/contracts；约束：单连接、一致性、append-only 契约、JetStream 审计。
+对齐《Solution Architecture》的关键组件与约束如下：
+- Components：
+  - services/ws-gateway（Node 22.11）：单连接转发、鉴权、指标导出。
+  - services/aggregator-go（Go 1.22）：增量/快照生产、去重与限速、分片输出 xy.md.*。
+  - packages/contracts：Protobuf 契约与 buf 兼容策略，生成 TS/Go/Py 代码。
+  - apps/ui（SharedWorker 骨架）：单连接扇出与跨标签一致性。
+- Constraints：
+  - 单连接一致性（SharedWorker 扇出）；仅追加契约（append-only）；
+  - JetStream 审计/回放与慢消费者保护；
+  - 安全边界：NATS Accounts、主题级 ACL、TLS、短期 JWT。
 
 ## Detailed Design
 
 ### Services and Modules
 
-- ws-gateway（Node）：WS→NATS 转发，JWT 校验；
-- aggregator-go（Go）：tick/snapshot 生产与分片；
-- contracts：Protobuf + buf（TS/Go/Py 生成）。
+- ws-gateway（Node 22.11；Owner: TBD）
+  - 职责：终止浏览器单连接 WebSocket；将订阅/取消订阅与消息转发至 NATS；暴露 /healthz 与 /metrics；慢消费者防护与限速。
+  - 输入：浏览器 WS 消息（订阅、心跳）、NATS 主题 xy.md.*。
+  - 输出：浏览器 WS 增量/快照消息；Prometheus 指标。
+
+- aggregator-go（Go 1.22；Owner: TBD）
+  - 职责：从 xy.src.* 与 xy.ref.* 摄入；按 33ms 产生增量、2–5s 产生快照；去重/乱序修正/限速与分片；输出至 xy.md.*；暴露指标。
+  - 输入：xy.src.tick.{venue}.{symbol}，xy.ref.contract.{venue}.{symbol}
+  - 输出：xy.md.tick.{group}[.{shard}]，xy.md.snapshot.{group}
+
+- contracts（Protobuf + buf；Owner: TBD）
+  - 职责：定义增量/快照契约与版本策略；生成 TS/Go/Py 代码；CI 仅追加兼容检查。
+  - 输入：.proto/.buf 版本与规则。
+  - 输出：生成代码包与兼容性报告。
+
+- apps/ui（SharedWorker 骨架；Owner: TBD）
+  - 职责：维护单条 WS；以 BroadcastChannel/MessagePort 向多标签页扇出；16–33ms 批处理去重；断线指数回退；指标采集。
+  - 输入：ws-gateway 消息流；
+  - 输出：页面事件与渲染数据；指标上报。
 
 ### Data Models and Contracts
 
-- contracts：md.tick、md.snapshot、session、feature_flags；
-- sessions 表（可选，仅记录登录/健康）。
+- md.tick（增量）
+  - 字段：ts_exchange、ts_arrival、seq、last、bid/ask[depth]、vol、oi、flags、source。
+  - 语义：按 group/shard 聚合后的最小必要变更集；允许小窗内重排与去重。
+
+- md.snapshot（快照）
+  - 字段：版本与序列、窗口状态、Top‑K/筛选投影；
+  - 语义：与增量同构，可在断线或版本不一致时 ≤1s 重建。
+
+- session / feature_flags（管理/可选）
+  - 字段：会话标识、心跳、特性开关。
+  - 语义：仅用于健康与灰度，不参与交易路径。
 
 ### APIs and Interfaces
 
-- xy.md.tick.{group}（JS 流）；xy.md.snapshot.{group}
-- xy.exec.health（健康流）
-- 管理 HTTP：/healthz, /metrics, /admin/feature-flags
+- NATS Subjects
+  - 摄入：xy.src.tick.{venue}.{symbol}；xy.ref.contract.{venue}.{symbol}
+  - 产出：xy.md.tick.{group}[.{shard}]；xy.md.snapshot.{group}
+  - 管理：xy.exec.health
+
+- HTTP（网关/服务）
+  - /healthz（liveness/readiness）、/metrics（Prometheus）、/admin/feature-flags（受限访问）
 
 ### Workflows and Sequencing
 
-- Aggregator 订阅源→生成 tick/snapshot→NATS 流→ws-gateway→SharedWorker 扇出
+1) aggregator-go 摄入 xy.src.* / xy.ref.* → 去重/修正/分片 → 输出 xy.md.*（33ms/2–5s）
+2) ws-gateway 订阅 xy.md.* → 单连接 WS 推送至浏览器 → 慢消费者保护
+3) SharedWorker 合并/去重（16–33ms）→ 扇出到多标签页 → UI 增量绘制
 
 ## Non-Functional Requirements
 
 ### Performance
-
-- WS 单连接稳定；P95 首字节 < 100ms；快照重建 ≤ 1s；帧预算 ≤ 8ms
+目标与度量（与 PRD/NFR 对齐）：
+- UI 帧时：rAF 帧 p95 ≤ 16.7ms、p99 ≤ 25ms；关键面板每帧渲染预算 ≤ 8ms。
+- 端到端（adapter→aggregator→WS→UI）：P95 < 120ms、P99 < 180ms。
+- 重建：断线或版本不一致触发快照重建 ≤ 1s；恢复到既有订阅 ≤ 3s。
+- SharedWorker 批处理：16–33ms 周期；避免超预算抖动（分片与优先级控制）。
 
 ### Security
-
-- NATS Accounts + JWT/NKey；主题 ACL 前缀 xy.*；TLS 强制
+控制与策略：
+- NATS Accounts + JWT/NKey 鉴权；短期令牌；TLS 强制。
+- 主题级 ACL：仅允许 xy.* 前缀的最小权限集；审计订阅/发布行为。
+- 管理面受限：/admin/feature-flags 仅对受信主体开放；日志敏感字段脱敏。
 
 ### Reliability/Availability
-
-- 慢消费者保护；网关灰度发布；JetStream 保留策略
+稳态与降级：
+- 慢消费者保护：背压阈值与丢弃策略（优先保证高价值面板）。
+- JetStream 流保留策略：xy.src.* 与 xy.ref.* 保留；回放与基准测试通道可用。
+- 网关灰度发布与健康门；异常自动降级三级：采样降频→字段裁剪→面板停更（含恢复条件）。
 
 ### Observability
-
-- 指标：ws_active, ws_msgs, nats_req_latency, ticks_out, snapshots_out
+指标与信号：
+- 网关：ws_active、ws_msgs_rate、slow_consumers、nats_req_latency、backpressure_events。
+- 聚合器：src_ingest_rate、src_gap、reorder_count、ticks_out、snapshots_out。
+- 端到端：p50/p95/p99 延迟、重建次数与耗时、带宽使用。
+日志与追踪：结构化日志；关键链路追踪（可选 OpenTelemetry）。
 
 ## Dependencies and Integrations
 
-Node 22、Go 1.25、NATS 2.12、buf、protoc、Prometheus
+- Runtime/Tooling
+  - Node.js 22.11.0 LTS（repo engines）+ pnpm 9.12.2
+  - Go 1.22（services/gocore/go.mod）
+  - Python 3.13（packages/pycore/pyproject.toml）
+  - protoc 28.2、buf 1.35.0
+- Libraries（代表性）
+  - 前端/网关：ws 8.18.3、nats.js 2.28.2、vitest 2.1.4
+  - Go：nats.go 1.46.0、prometheus client_golang 1.23.2
+  - Python：nats-py 2.11.0、prometheus-client 0.20.0（用于后续 AlgoExec 服务）
+- Platform
+  - NATS Server 2.12.1（JetStream 启用）
+  - Prometheus/Grafana/Loki/Tempo（可观测栈，按《Solution Architecture》建议）
+
+约束与版本策略：
+- 合同仓库实施“仅追加”兼容策略；CI 执行 buf 兼容检查。
+- Node/Go/Python 版本在 CI 中锁定并通过容器/镜像统一；不允许在生产中使用未列入白名单的次要版本。
 
 ## Acceptance Criteria (Authoritative)
 
-1) 单连接与 SharedWorker 扇出稳定（无重复连接）；
-2) tick 33ms/快照 2–5s 达标；
-3) 所有主题受 ACL 管控；
-4) 指标/日志齐备；
-5) 契约变更经 buf 兼容检查通过。
+1) 单连接一致性：浏览器仅建立 1 条 WS；切换/新开标签不产生额外连接；断线指数回退与并发上限生效。
+2) 扇出与批处理：SharedWorker 以 16–33ms 周期合并/去重广播；在 4–5 窗口并开时不超过渲染预算（每帧 ≤ 8ms）。
+3) 聚合通道：aggregator-go 稳定输出 33ms 增量与 2–5s 快照；任一点断线触发快照重建 ≤ 1s。
+4) 端到端时延：adapter→aggregator→WS→UI 渲染 P95 < 120ms、P99 < 180ms（交易时段基线）。
+5) 安全与权限：NATS Accounts + JWT/NKey 强制；主题级 ACL 覆盖 xy.* 且最小权限；未授权主题被拒绝并审计。
+6) 可观测：/metrics 暴露 ws_active、ws_msgs_rate、slow_consumers、nats_req_latency、ticks_out、snapshots_out；日志结构化且含错误码。
+7) 慢消费者保护：达到阈值时触发降级（采样降频/字段裁剪/停更），并记录事件与恢复条件。
+8) 契约治理：Protobuf 契约变更经 buf 兼容检查（append-only）；生成 TS/Go/Py 代码与样例通过。
+9) 恢复与一致性：断线或版本不一致场景下 ≤ 3s 恢复至原订阅与视图；不一致自动请求快照。
+10) 管理面约束：/admin/feature-flags 仅对受信主体开放；审计所有管理变更。
 
 ## Traceability Mapping
 
-| AC | Spec | Components | APIs | Test |
-| -- | -- | -- | -- | -- |
-| 1 | 4/WS 网关 | ws-gateway | xy.md.*, WS | e2e-conn |
-| 2 | 4/聚合器 | aggregator-go | xy.md.* | perf-sim |
-| 3 | 5/安全 | contracts+gateway | NATS ACL | sec-test |
-| 4 | 5/观测 | all | /metrics | prom-scrape |
-| 5 | 3/契约 | contracts | buf check | ci-job |
+| AC | Spec Section | Components | Interfaces | Verification |
+| -- | ------------- | --------- | --------- | ----------- |
+| 1 | Detailed Design → Services/WS 网关；Workflows | ws-gateway, SharedWorker | WS | e2e: single-connection fanout |
+| 2 | Detailed Design → Workflows；NFR/Performance | SharedWorker | WS | perf: worker batch budget |
+| 3 | Detailed Design → Aggregator；APIs | aggregator-go | xy.src.*, xy.md.* | perf: tick/snapshot simulator |
+| 4 | NFR/Performance | 全链路 | WS + NATS | e2e: latency probe & dashboards |
+| 5 | NFR/Security | NATS + ws-gateway | JWT/NKey + ACL | sec: ACL negative/positive cases |
+| 6 | NFR/Observability | ws-gateway, aggregator-go | /metrics | obs: prometheus scrape |
+| 7 | NFR/Reliability | ws-gateway | WS | chaos: slow consumer & degrade |
+| 8 | Data Models/Contracts | contracts | buf | ci: buf breaking-check pipeline |
+| 9 | Workflows + NFR/Reliability | ws-gateway, SharedWorker | WS + xy.md.* | e2e: disconnect/rebuild tests |
+| 10 | Security + Admin | ws-gateway | HTTP admin | sec: RBAC/admin audit tests |
 
 ## Risks, Assumptions, Open Questions
 
-- Risk: 网关拥塞 → 限流+优先级
-- Assumption: 上游行情源稳定
-- Question: 是否需要多地域冗余？
+- Risk：UI 慢消费者导致背压扩散 → 网关限流与优先级丢弃；触发 3 级降级并提示用户（记录事件）。
+- Risk：聚合器分片/乱序修正策略不当 → 压测与回放基准验证；出现 gap 时自动告警。
+- Risk：契约破坏性变更 → buf 兼容检查强制；未知字段容忍并打点。
+- Assumption：上游行情源稳定、时钟同步在容忍范围内；网络带宽满足基线门槛。
+- Question：是否需要多地域冗余与跨集群订阅（Level 4 才引入）。
 
 ## Test Strategy Summary
-
-- 单元：网关适配、契约生成；集成：NATS RPC/流；E2E：多窗口订阅与恢复；性能：tick 注入与 UI FPS 监测。
+测试金字塔：
+- Unit：ws-gateway 订阅/转发/限流；contracts 代码生成与未知字段容忍；SharedWorker 扇出与批处理逻辑。
+- Integration：NATS RPC/流主题连通；aggregator-go 输出与分片；/metrics 暴露与采集。
+- E2E：多窗口单连接、断线恢复（≤3s）、场景切换不抖动；权限/ACL 正反用例。
+- Performance：tick 注入压测（33ms 增量/2–5s 快照）；UI FPS 与端到端延迟仪表板对比阈值。
