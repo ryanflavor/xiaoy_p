@@ -1,0 +1,10 @@
+[project]
+name = "xiaoy-contracts"
+version = "0.1.0"
+description = "Python contracts and tolerant decoders for xiaoy"
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+

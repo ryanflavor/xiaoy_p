@@ -1,0 +1,14 @@
+syntax = "proto3";
+package xy.md.v1;
+
+// Periodic snapshot message
+message Snapshot {
+  int64 ts_ms = 1;           // snapshot timestamp (ms)
+  string symbol = 2;         // instrument symbol
+  double bid = 3;
+  double ask = 4;
+  uint64 bid_size = 5;
+  uint64 ask_size = 6;
+  // Append-only: add new fields with new tag numbers
+}
+
