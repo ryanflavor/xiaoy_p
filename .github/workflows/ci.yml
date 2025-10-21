@@ -43,7 +43,9 @@ jobs:
         run: |
           python -V
           python -m pip install --upgrade pip
-          python -m pip install pytest -r packages/pycore/requirements-dev.txt || true
+          python -m pip install -r packages/pycore/requirements-dev.txt || true
+          python -m pip install pytest
+          python -m pip install -e packages/pycore
           pytest -q packages/pycore
 
       - name: Setup Go
