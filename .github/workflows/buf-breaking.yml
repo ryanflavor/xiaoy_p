@@ -20,5 +20,10 @@ jobs:
           REF="${BASE_SHA:-main}"
           echo "Using base ref: $REF"
           cd packages/contracts
-          # From module root, reference repository root .git via parent path (no subdir needed when run from module root)
+          # If base ref has no proto files (first introduction), skip breaking check
+          if ! git ls-tree -r "$REF" --name-only -- proto | grep -E '\\.proto$' >/dev/null 2>&1; then
+            echo "No .proto files found at base ref $REF; treating as initial schema introduction. Skipping breaking check."
+            exit 0
+          fi
+          # Otherwise compare current module against base
           buf breaking --against "../../.git#ref=$REF" --error-format=github-actions
