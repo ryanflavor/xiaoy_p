@@ -16,7 +16,8 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          cd packages/contracts
+          set -euo pipefail
           REF="${BASE_SHA:-main}"
           echo "Using base ref: $REF"
-          buf breaking --against ".git#ref=$REF,subdir=packages/contracts" --error-format=github-actions
+          # Run from repo root, target the contracts module path explicitly
+          buf breaking packages/contracts --against ".git#ref=$REF,subdir=packages/contracts" --error-format=github-actions

@@ -19,13 +19,17 @@ jobs:
           node-version: '22'
 
       - name: Enable Corepack (pnpm)
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.2 --activate
 
       - name: ws-gateway deps (pnpm)
-        run: pnpm -C services/ws-gateway install
+        working-directory: services/ws-gateway
+        run: pnpm install
 
       - name: ws-gateway tests (vitest)
-        run: pnpm -C services/ws-gateway vitest run --reporter=verbose
+        working-directory: services/ws-gateway
+        run: pnpm vitest run --reporter=verbose
 
       - name: UI tests (node --test)
         run: node --test apps/ui/test/overlay.test.mjs
@@ -37,4 +41,3 @@ jobs:
 
       - name: aggregator-go tests
         run: go test ./services/aggregator-go -run TestHealthzEndpoint -v
-
