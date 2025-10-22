@@ -34,6 +34,8 @@ class WebSocketManager {
     }
     /** @type {(ev: any) => void} */
     this.onMessage = null
+    this.lastCloseCode = null
+    this.lastCloseReason = null
   }
 
   /** @returns {WSLike|null} */
@@ -69,7 +71,8 @@ class WebSocketManager {
         try {
           let count = 0
           for (const topic of this.subs) {
-            ws.send(JSON.stringify({ type: 'subscribe', topic }))
+            // server expects an array field 'subjects'
+            ws.send(JSON.stringify({ type: 'subscribe', subjects: [topic] }))
             count++
           }
           if (count > 0) this.metrics.resubscribed += count
@@ -78,7 +81,11 @@ class WebSocketManager {
       ws.addEventListener('message', (ev) => {
         try { if (typeof this.onMessage === 'function') this.onMessage(ev) } catch {}
       })
-      ws.addEventListener('close', () => {
+      ws.addEventListener('close', (ev) => {
+        try {
+          this.lastCloseCode = ev?.code ?? null
+          this.lastCloseReason = ev?.reason ?? null
+        } catch {}
         this.socket = null
         this.lastCloseTs = this.cfg.now()
         if (this.shouldReconnect) this.#scheduleReconnect(url, protocols, factory)
@@ -124,13 +131,16 @@ class WebSocketManager {
   /** Health snapshot for diagnostics. */
   health () {
     return {
-      connected: !!this.socket,
+      connected: !!(this.socket && this.socket.readyState === 1),
+      readyState: this.socket ? this.socket.readyState : -1,
       reconnectAttempts: this.reconnectAttempts,
       nextDelayMs: this.nextDelayMs,
       createdConnections: this.connectCount,
       subscriptions: this.subs.size,
       lastCloseTs: this.lastCloseTs,
-      lastError: this.lastError ? String(this.lastError) : null,
+      lastError: this.lastError ? String(this.lastError?.message || this.lastError) : null,
+      lastCloseCode: this.lastCloseCode,
+      lastCloseReason: this.lastCloseReason,
     }
   }
 
