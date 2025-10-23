@@ -15,8 +15,8 @@ test('ChartCanvas - data sampling and throttling', async (t) => {
     const chart = new ChartCanvas()
     chart.throttleInterval = 50 // 50ms throttle
 
-    let updateCount = 0
-    const originalLastUpdate = chart.lastDataUpdate
+    let _updateCount = 0
+    const _originalLastUpdate = chart.lastDataUpdate
 
     // Mock time
     let mockTime = 0
@@ -194,18 +194,18 @@ test('ChartCanvas - rendering performance', async (t) => {
     }))
 
     // Track draw calls
-    let drawCalls = 0
+    let _drawCalls = 0
     const originalMoveTo = chart.offscreenCtx.moveTo
     const originalLineTo = chart.offscreenCtx.lineTo
 
     chart.offscreenCtx.moveTo = function(...args) {
-      drawCalls++
+      _drawCalls++
       mockTime += 0.01 // Each call takes 0.01ms
       return originalMoveTo?.apply(this, args)
     }
 
     chart.offscreenCtx.lineTo = function(...args) {
-      drawCalls++
+      _drawCalls++
       mockTime += 0.01 // Each call takes 0.01ms
       return originalLineTo?.apply(this, args)
     }
@@ -247,7 +247,7 @@ test('ChartCanvas - rendering performance', async (t) => {
 
     // Initial render
     chart.render()
-    const initialRegions = drawnRegions.length
+    const _initialRegions = drawnRegions.length
 
     // Add new data and render again
     drawnRegions.length = 0

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { Counter, Gauge, LatencyTracker, createFpsMeter, MetricsRegistry, MetricNames } from '../src/lib/metrics/metrics.mjs'
+import { LatencyTracker, createFpsMeter, MetricsRegistry, MetricNames } from '../src/lib/metrics/metrics.mjs'
 
 test('LatencyTracker computes percentiles', () => {
   const l = new LatencyTracker(16)

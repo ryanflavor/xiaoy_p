@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "lint": "node tools/lint.mjs",
-    "lint:eslint": "eslint . --max-warnings=30",
+    "lint:eslint": "eslint . --max-warnings=10",
     "format": "prettier -w .",
     "format:check": "node tools/format-check.mjs",
     "format:check:prettier": "prettier -c \"packages/**/*.{js,ts,tsx,jsx,json}\" \"tools/**/*.{js,mjs,cjs}\"",

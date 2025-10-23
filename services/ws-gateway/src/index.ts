@@ -126,7 +126,7 @@ async function main() {
 
   server.on('upgrade', (req, socket, head) => handleUpgrade(req, socket, head, server, wss));
 
-  wss.on('connection', async (ws, req) => {
+  wss.on('connection', async (ws, _req) => {
     const id = newClientId();
     const ctx: ClientCtx = { id, socket: ws, subs: [], queue: new OutboundQueue(cfg.WS_SEND_QUEUE_MAX) };
     clients.set(id, ctx);

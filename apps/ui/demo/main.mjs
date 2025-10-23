@@ -41,8 +41,8 @@ const port = worker ? worker.port : { start(){}, postMessage(){}, onmessage:null
 window.demoPort = port
 port.start()
 
-port.onmessage = (e) => {
-  const msg = e.data || {}
+port.onmessage = (ev) => {
+  const msg = ev.data || {}
   if (msg.kind === 'hello') {
     connEl.textContent = String(msg.createdConnections || 0)
     portsEl.textContent = String(msg.ports || 1)
