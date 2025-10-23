@@ -34,6 +34,8 @@ class WebSocketManager {
     }
     /** @type {(ev: any) => void} */
     this.onMessage = null
+    this.lastCloseCode = null
+    this.lastCloseReason = null
   }
 
   /** @returns {WSLike|null} */
@@ -69,16 +71,21 @@ class WebSocketManager {
         try {
           let count = 0
           for (const topic of this.subs) {
-            ws.send(JSON.stringify({ type: 'subscribe', topic }))
+            // server expects an array field 'subjects'
+            ws.send(JSON.stringify({ type: 'subscribe', subjects: [topic] }))
             count++
           }
           if (count > 0) this.metrics.resubscribed += count
-        } catch {}
+        } catch { void 0 }
       })
       ws.addEventListener('message', (ev) => {
-        try { if (typeof this.onMessage === 'function') this.onMessage(ev) } catch {}
+        try { if (typeof this.onMessage === 'function') this.onMessage(ev) } catch { void 0 }
       })
-      ws.addEventListener('close', () => {
+      ws.addEventListener('close', (ev) => {
+        try {
+          this.lastCloseCode = ev?.code ?? null
+          this.lastCloseReason = ev?.reason ?? null
+        } catch { void 0 }
         this.socket = null
         this.lastCloseTs = this.cfg.now()
         if (this.shouldReconnect) this.#scheduleReconnect(url, protocols, factory)
@@ -87,25 +94,25 @@ class WebSocketManager {
         this.lastError = e
       })
       this.listenersAttached = true
-    } catch {}
+    } catch { void 0 }
     return ws
   }
 
   /** Intentionally disconnect. */
   disconnect ({ reconnect = false } = {}) {
     this.shouldReconnect = !!reconnect
-    try { this.socket?.close?.() } catch {}
+    try { this.socket?.close?.() } catch { void 0 }
     if (!reconnect) this.cancelReconnect()
   }
 
   /** Add logical subscription to be restored after reconnect. */
   addSubscription (topic) {
     this.subs.add(topic)
-    if (this.socket) try { this.socket.send(JSON.stringify({ type:'subscribe', subjects: [topic] })) } catch {}
+    if (this.socket) try { this.socket.send(JSON.stringify({ type:'subscribe', subjects: [topic] })) } catch { void 0 }
   }
   removeSubscription (topic) {
     this.subs.delete(topic)
-    if (this.socket) try { this.socket.send(JSON.stringify({ type:'unsubscribe', subjects: [topic] })) } catch {}
+    if (this.socket) try { this.socket.send(JSON.stringify({ type:'unsubscribe', subjects: [topic] })) } catch { void 0 }
   }
 
   /** Record slow consumer metric. */
@@ -114,8 +121,8 @@ class WebSocketManager {
   /** Cancel any scheduled reconnect timer. */
   cancelReconnect () {
     if (this.reconnectTimer != null) {
-      try { if (typeof clearTimeout === 'function') clearTimeout(this.reconnectTimer) } catch {}
-      try { if (typeof clearImmediate === 'function') clearImmediate(this.reconnectTimer) } catch {}
+      try { if (typeof clearTimeout === 'function') clearTimeout(this.reconnectTimer) } catch { void 0 }
+      try { if (typeof clearImmediate === 'function') clearImmediate(this.reconnectTimer) } catch { void 0 }
     }
     this.reconnectTimer = null
     this.concurrentReconnects = 0
@@ -124,13 +131,16 @@ class WebSocketManager {
   /** Health snapshot for diagnostics. */
   health () {
     return {
-      connected: !!this.socket,
+      connected: !!(this.socket && this.socket.readyState === 1),
+      readyState: this.socket ? this.socket.readyState : -1,
       reconnectAttempts: this.reconnectAttempts,
       nextDelayMs: this.nextDelayMs,
       createdConnections: this.connectCount,
       subscriptions: this.subs.size,
       lastCloseTs: this.lastCloseTs,
-      lastError: this.lastError ? String(this.lastError) : null,
+      lastError: this.lastError ? String(this.lastError?.message || this.lastError) : null,
+      lastCloseCode: this.lastCloseCode,
+      lastCloseReason: this.lastCloseReason,
     }
   }
 

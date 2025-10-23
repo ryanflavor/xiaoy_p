@@ -5,7 +5,10 @@ const token = (process.env.TOKEN || readFileSync(new URL('../.demo_token.txt', i
 const url = process.env.WS_URL || 'ws://localhost:8080/ws'
 const subjects = (process.env.SUBJECTS || 'xy.md.tick.demo').split(',')
 
-const ws = new WebSocket(url, ['bearer', token])
+// Pass token via query param to avoid subprotocol validation issues in ws
+const u = new URL(url, 'http://localhost')
+u.searchParams.set('token', token)
+const ws = new WebSocket(u.toString().replace('http://localhost', ''))
 
 ws.on('open', () => {
   console.log('ws open, subscribing', subjects)

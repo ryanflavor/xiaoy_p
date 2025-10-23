@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>运维仪表盘（Demo）— Story 1.7</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background:#f6f8fa; margin:0; }
+    header { padding:12px 16px; background:#0b3d62; color:#fff; display:flex; justify-content:space-between; align-items:center; }
+    header h1 { font-size:16px; margin:0; }
+    .filters { display:flex; gap:12px; align-items:center; }
+    main { padding:16px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px; }
+    .card { background:#fff; border:1px solid #e1e4e8; border-radius:8px; padding:12px; }
+    .kpi { font: 12px/1.2 ui-monospace,monospace; color:#24292e }
+    .muted { color:#57606a; font-size:12px }
+    .ok { color:#1a7f37 } .warn { color:#f0883e } .crit { color:#cf222e }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>运维仪表盘（Demo）— SLO/错误预算</h1>
+    <div class="filters">
+      <label>环境
+        <select id="env">
+          <option value="dev">dev</option>
+          <option value="prod">prod</option>
+        </select>
+      </label>
+      <label>面板
+        <select id="panel">
+          <option>列表</option>
+          <option>图表</option>
+          <option>账户</option>
+          <option>风险</option>
+        </select>
+      </label>
+      <label>分组
+        <select id="group">
+          <option value="xy.md.1">xy.md.1</option>
+          <option value="xy.md.2">xy.md.2</option>
+          <option value="xy.md.3">xy.md.3</option>
+        </select>
+      </label>
+    </div>
+  </header>
+  <main>
+    <section class="grid">
+      <div class="card"><h3 class="muted">端到端延迟 p50/p95/p99</h3><div id="lat" class="kpi">-- / -- / -- ms</div></div>
+      <div class="card"><h3 class="muted">慢消费者</h3><div id="slow" class="kpi">0</div></div>
+      <div class="card"><h3 class="muted">活动连接</h3><div id="conns" class="kpi">--</div></div>
+      <div class="card"><h3 class="muted">重连计数</h3><div id="reconnects" class="kpi">0</div></div>
+      <div class="card"><h3 class="muted">订阅风暴</h3><div id="storms" class="kpi">0</div></div>
+      <div class="card"><h3 class="muted">吞吐（msgs/s）</h3><div id="rate" class="kpi">--</div></div>
+      <div class="card"><h3 class="muted">错误预算燃尽（5m / 1h）</h3><div id="burn" class="kpi">-- / --</div></div>
+      <div class="card"><h3 class="muted">Top‑N 慢消费者面板</h3><div id="topn" class="kpi">—</div></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { evaluateSnapshot, computeBurnRates } from '/src/lib/slo.mjs'
+    import { rankGroups } from '/src/lib/topn.mjs'
+    import { sloConfig } from '/src/config/slo-config.mjs'
+
+    const latEl = document.getElementById('lat')
+    const slowEl = document.getElementById('slow')
+    const connsEl = document.getElementById('conns')
+    const reconnectsEl = document.getElementById('reconnects')
+    const stormsEl = document.getElementById('storms')
+    const rateEl = document.getElementById('rate')
+    const burnEl = document.getElementById('burn')
+    const topnEl = document.getElementById('topn')
+
+    const samples = [] // {ts,bad} for burn computation
+
+    const params = new URLSearchParams(location.search)
+    const forceCrit = params.get('forceCrit') === '1'
+
+    function parsePrometheusText(text) {
+      const lines = text.split(/\n+/)
+      const data = {}
+      for (const ln of lines) {
+        if (!ln || ln.startsWith('#')) continue
+        const parts = ln.trim().split(/\s+/)
+        if (parts.length < 2) continue
+        const name = parts[0].replace(/\{.*\}$/,'')
+        const num = Number(parts[1])
+        if (!Number.isNaN(num)) data[name] = num
+      }
+      return {
+        latency_p50: data['latency_p50'] ?? data['xy_latency_p50'],
+        latency_p95: data['latency_p95'] ?? data['xy_latency_p95'],
+        latency_p99: data['latency_p99'] ?? data['xy_latency_p99'],
+        slow_consumers: data['slow_consumers'] ?? 0,
+        ws_active: data['ws_active'] ?? 0,
+        ws_msgs_rate: data['ws_msgs_rate'] ?? data['xy_ws_msgs_rate'],
+        xy_nats_reconnects_total: data['xy_nats_reconnects_total'] ?? 0,
+        xy_sub_storms_total: data['xy_sub_storms_total'] ?? 0,
+      }
+    }
+
+    function renderMetrics(m) {
+      // Render basic KPIs
+      latEl.textContent = `${m.latency_p50?.toFixed?.(0) ?? '--'} / ${m.latency_p95?.toFixed?.(0) ?? '--'} / ${m.latency_p99?.toFixed?.(0) ?? '--'} ms`
+      slowEl.textContent = String(m.slow_consumers ?? 0)
+      connsEl.textContent = String(m.ws_active ?? 0)
+      reconnectsEl.textContent = String(m.xy_nats_reconnects_total ?? 0)
+      stormsEl.textContent = String(m.xy_sub_storms_total ?? 0)
+      rateEl.textContent = String(m.ws_msgs_rate ?? '-')
+
+      // Evaluate snapshot and update samples
+      const snap = {
+        fps: 60, // demo page不采集帧率，此处固定；主应用内由 overlay 采集
+        e2eLatency: { p50: m.latency_p50 ?? 0, p95: m.latency_p95 ?? 0, p99: m.latency_p99 ?? 0 },
+        slowConsumers: m.slow_consumers ?? 0,
+      }
+      const ev = evaluateSnapshot(snap, sloConfig)
+      const bad = ev.level !== 'ok'
+      samples.push({ ts: Date.now(), bad })
+      // Keep last 1h + margin
+      const cutoff = Date.now() - (sloConfig.errorBudget.window1hMs + 10_000)
+      while (samples.length && samples[0].ts < cutoff) samples.shift()
+
+      // Burn rates
+      const burns = computeBurnRates(samples, Date.now(), sloConfig)
+      const fmt = (x) => (x === Infinity ? '∞' : (x || 0).toFixed(2) + 'x')
+      burnEl.textContent = `${fmt(burns.burn5m)} / ${fmt(burns.burn1h)}`
+      burnEl.className = 'kpi ' + (burns.burn5m > 1 || burns.burn1h > 1 ? 'crit' : ev.level)
+
+      // Top‑N（绑定真实维度，如提供 *_by_group 则使用其键；否则回退到演示列表）
+      const scBy = m.slow_consumers_by_group || null
+      const p95By = m.latency_p95_by_group || null
+      let groups = []
+      if (scBy && typeof scBy === 'object') groups = Object.keys(scBy)
+      else if (p95By && typeof p95By === 'object') groups = Object.keys(p95By)
+      else groups = ['xy.md.1','xy.md.2','xy.md.3']
+
+      const arr = rankGroups(
+        Object.fromEntries(groups.map(g => [g, scBy?.[g] ?? (m.slow_consumers ?? 0)])),
+        Object.fromEntries(groups.map(g => [g, p95By?.[g] ?? (m.latency_p95 ?? 0)])),
+      )
+      topnEl.textContent = arr.slice(0,3).map(x=>`${x.g}:${x.score.toFixed(2)}`).join('  ')
+    }
+
+    async function loadMetrics() {
+      const host = location.hostname
+      const gwPort = Number(new URLSearchParams(location.search).get('gw')) || 8080
+
+      // Prefer gateway Prometheus text via LAN-safe URL
+      let res = await fetch(`http://${host}:${gwPort}/metrics`, { headers: { Accept: 'text/plain' } }).catch(()=>null)
+      if (res?.ok) {
+        const text = await res.text()
+        const m = parsePrometheusText(text)
+        if (forceCrit) { m.latency_p95 = 300; m.latency_p99 = 450; m.slow_consumers = 5 }
+        renderMetrics(m)
+        return
+      }
+      // Fallback: metrics mock on server host 8081 → same-origin JSON
+      res = await fetch(`http://${host}:8081/metrics.json`, { headers: { Accept: 'application/json' } }).catch(()=>null)
+      if (!res?.ok) res = await fetch('/metrics.json', { headers: { Accept: 'application/json' } }).catch(()=>null)
+      if (!res?.ok) return
+      const m = await res.json()
+      if (forceCrit) { m.latency_p95 = 300; m.latency_p99 = 450; m.slow_consumers = 5 }
+      renderMetrics(m)
+    }
+
+    setInterval(loadMetrics, 2000)
+    loadMetrics()
+    </script>
+</body>
+</html>

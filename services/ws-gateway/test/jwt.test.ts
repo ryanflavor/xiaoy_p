@@ -5,7 +5,7 @@ import { verifyJwt } from '../src/jwt.js'
 describe('JWT verification (public key)', async () => {
   const { publicKey, privateKey } = await generateKeyPair('RS256')
   const jwk = await exportJWK(publicKey)
-  const pub = await importJWK(jwk, 'RS256')
+  const _pub = await importJWK(jwk, 'RS256')
   // obtain PEM SPKI string from crypto subtle export workaround
   // For tests, we sign and verify using jose; verifyJwt will accept the PEM via string
   // Build a PEM from Node's publicKey export

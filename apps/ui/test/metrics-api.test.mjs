@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { registry, querySnapshot, subscribe, uiFpsGauge, e2eLatency, slowConsumers } from '../src/lib/metrics/api.mjs'
+import { querySnapshot, subscribe, e2eLatency, slowConsumers } from '../src/lib/metrics/api.mjs'
 
 test('metrics API query and subscribe provide values', async () => {
   // seed some values
@@ -16,4 +16,3 @@ test('metrics API query and subscribe provide values', async () => {
   assert.ok(snap.latencies.ui_e2e_latency_ms.p95 >= 100)
   assert.ok(called >= 2)
 })
-

@@ -240,6 +240,28 @@ Tailwind 原子化 + 少量 CSS 变量；黑暗主题与高对比度主题并存
 
 Dev：Docker Compose；Prod：Kubernetes（Ingress + Cert‑Manager + Prometheus/Grafana + Loki/Tempo）。
 
+#### Dev 运行视图（新增）
+
+```
+ [demo-publisher] -> NATS(4222) <- ws-gateway(8080) <- SharedWorker(UI 5174)
+                                     |                     
+                                     +-> /metrics          
+ [aggregator-go(8090)] --------------/                      
+ [prometheus(9090)] <--- scrape gateway/aggregator /metrics
+```
+
+- 根编排：`compose.demo.yml`
+- 运行手册：
+  - 启动：`npm run demo:up`（必要核心服务）
+  - 观察：`npm run demo:observe`（可选 Prometheus）
+  - 发布：`npm run demo:publisher`（可选 demo 消息）
+  - 验证：`npm run demo:smoke` 或运行 Playwright 用例
+- 故障排查：
+  - UI 无法连接：检查 `http://localhost:8080/healthz` 是否 `natsConnected=true`
+  - 无消息：确认 `publisher` 在运行或手动执行 `services/ws-gateway/examples/publish.mjs`
+  - 指标为空：访问 `http://localhost:8080/metrics` 与 `http://localhost:8090/metrics`
+
+
 ### 10.2 CDN Strategy
 
 静态资源经 CDN；WS 长连接直连网关域名（同域/子域）。

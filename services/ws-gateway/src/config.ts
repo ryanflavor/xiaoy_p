@@ -26,6 +26,7 @@ export const configSchema = z.object({
   JWT_PUBLIC_KEY: z.string().optional(), // PEM (SPKI)
   JWT_ALLOWED_AUD: z.string().optional(), // CSV
   JWT_ALLOWED_ISS: z.string().optional(), // CSV
+  JWT_OPTIONAL: z.coerce.boolean().default(false),
   ALLOWED_ORIGINS: z.string().default('*'), // CSV or '*'
 
   // ACL
@@ -50,6 +51,7 @@ export type AppConfig = z.infer<typeof configSchema> & {
   whitelist: string[];
   allowedAud?: string[];
   allowedIss?: string[];
+  JWT_OPTIONAL: boolean;
 };
 
 export function loadConfig(env = process.env): AppConfig {

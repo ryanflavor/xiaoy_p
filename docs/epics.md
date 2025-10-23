@@ -108,6 +108,8 @@ Acceptance Criteria:
 3. 降级策略开关可触发与恢复。
 Prerequisites: 1.3, 1.5
 
+> 注：实施拆分出内部里程碑“1.6a 集成骨架”，用于端到端编排与最小 E2E 校验的门槛化交付；该编号仅用于实施追踪，不改变正式排序与编号。
+
 **Story 1.7: 运维仪表盘与 SLO/错误预算**
 Enabler — 运维仪表盘与 SLO/错误预算
 I want an ops dashboard with SLO/SLI budgets,

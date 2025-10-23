@@ -26,7 +26,6 @@ function isDebugEnabled () {
     const q = new URLSearchParams(globalThis.location?.search || '')
     if (q.get('debug') === '1') return true
     if (globalThis.localStorage?.getItem('xy_debug') === '1') return true
-  } catch {}
+  } catch { void 0 }
   return false
 }
-

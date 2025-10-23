@@ -1,13 +1,34 @@
 import { createFpsMeter } from '../src/lib/metrics/metrics.mjs'
+import { uiFpsGauge, e2eLatency } from '../src/lib/metrics/api.mjs'
 
 const $ = (id) => document.getElementById(id)
 const hb = $('hb'), out = $('out'), health = $('health')
 const fpsEl = $('fps'), connEl = $('conn'), portsEl = $('ports')
+const rateEl = $('rate'), latpEl = $('latp')
 
 // Start FPS meter
 const meter = createFpsMeter()
 meter.start()
-setInterval(() => { fpsEl.textContent = String(meter.fps()) }, 250)
+setInterval(() => {
+  const v = meter.fps()
+  fpsEl.textContent = String(v)
+  try { uiFpsGauge.set(v) } catch { void 0 }
+}, 250)
+
+// Track message rate (msgs/sec) and e2e latency percentiles
+const recvTs = []
+function updateRateDisplay() {
+  const now = Date.now()
+  while (recvTs.length && now - recvTs[0] > 1000) recvTs.shift()
+  const rate = recvTs.length
+  if (rateEl) rateEl.textContent = String(rate)
+  // Update latency overlay display
+  try {
+    const stats = e2eLatency.stats()
+    if (stats && latpEl) latpEl.textContent = `${Math.round(stats.p50)}/${Math.round(stats.p95)}/${Math.round(stats.p99)}`
+  } catch { void 0 }
+}
+setInterval(updateRateDisplay, 250)
 
 // Start SharedWorker (fallback:提示不支持)
 if (typeof SharedWorker !== 'function') {
@@ -20,8 +41,8 @@ const port = worker ? worker.port : { start(){}, postMessage(){}, onmessage:null
 window.demoPort = port
 port.start()
 
-port.onmessage = (e) => {
-  const msg = e.data || {}
+port.onmessage = (ev) => {
+  const msg = ev.data || {}
   if (msg.kind === 'hello') {
     connEl.textContent = String(msg.createdConnections || 0)
     portsEl.textContent = String(msg.ports || 1)
@@ -35,7 +56,21 @@ port.onmessage = (e) => {
     out.textContent = JSON.stringify(msg.payload, null, 2)
   } else if (msg.kind === 'ws') {
     try {
-      out.textContent = typeof msg.payload === 'string' ? msg.payload : JSON.stringify(msg.payload, null, 2)
+      const payload = msg.payload
+      const text = typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2)
+      out.textContent = text
+      // Record rate
+      recvTs.push(Date.now())
+      // Record latency if server timestamp available
+      const ts = (typeof payload === 'object' && payload && (payload.ts_server || payload.ts || payload.t))
+      if (ts) {
+        const now = Date.now()
+        let off = Number(window.__gwClockOffsetMs || 0)
+        let lat = (now + off) - Number(ts)
+        if (lat < -5) { off += Math.round(-lat); window.__gwClockOffsetMs = off; lat = 0 }
+        if (lat < 0) lat = 0
+        try { e2eLatency.observe(lat) } catch { void 0 }
+      }
     } catch {
       out.textContent = String(msg.payload)
     }
@@ -43,7 +78,7 @@ port.onmessage = (e) => {
     const details = msg.topic ? ` ${msg.topic}` : ''
     out.textContent = `ack: ${msg.what}${details}`
     if (msg.what === 'subscribe' || msg.what === 'unsubscribe') {
-      try { port.postMessage({ kind: 'health' }) } catch {}
+      try { port.postMessage({ kind: 'health' }) } catch { void 0 }
     }
   }
 }
@@ -54,11 +89,12 @@ try {
   const params = new URL(location.href).searchParams
   const u = params.get('url'); if (u) $('wsUrl').value = u
   const tk = params.get('token'); if (tk) $('wsToken').value = tk
-} catch {}
+} catch { void 0 }
 
 $('btnConnect').onclick = () => {
   const url = $('wsUrl').value || 'ws://localhost:8080/ws'
   const token = $('wsToken').value || ''
+  try { calibrateClockFromHealthz(url).then((off)=>{ console.log('clock offset(ms)=', off); window.__gwClockOffsetMs = off }).catch(()=>{}) } catch { void 0 }
   port.postMessage({ kind: 'init', url, token })
 }
 // Auto-connect if url+token prefilled (from query or previous state)
@@ -66,8 +102,12 @@ $('btnConnect').onclick = () => {
   try {
     const url = $('wsUrl')?.value?.trim()
     const token = $('wsToken')?.value?.trim()
-    if (url && token) port.postMessage({ kind: 'init', url, token })
-  } catch {}
+    if (url && token) {
+      calibrateClockFromHealthz(url).then((off)=>{ window.__gwClockOffsetMs = off }).finally(()=>{
+        try { port.postMessage({ kind: 'init', url, token }) } catch { void 0 }
+      })
+    }
+  } catch { void 0 }
 })()
 $('btnHealth').onclick = () => port.postMessage({ kind: 'health' })
 $('btnSlow').onclick = () => port.postMessage({ kind: 'slow-consumer' })
@@ -77,3 +117,31 @@ $('btnBroadcast').onclick = () => port.postMessage({ kind: 'broadcast', payload:
 $('btnReconnect').onclick = () => port.postMessage({ kind: 'disconnect' })
 
 window.addEventListener('beforeunload', () => port.postMessage({ kind: 'close' }))
+
+// --- Clock sync via /healthz Date header ---
+async function calibrateClockFromHealthz (wsUrl) {
+  try {
+    const u = new URL(wsUrl, location.href)
+    const http = (u.protocol === 'wss:') ? 'https:' : 'http:'
+    const base = `${http}//${u.hostname}${u.port ? ':'+u.port : ''}`
+    const target = `${base.replace(/\/$/, '')}/healthz`
+    let best = { rtt: Number.POSITIVE_INFINITY, off: 0 }
+    for (let i=0;i<3;i++) {
+      const t0 = Date.now()
+      const resp = await fetch(target, { method: 'GET', cache: 'no-store', mode: 'cors' })
+      const t3 = Date.now()
+      const dateHdr = resp.headers.get('date')
+      if (!dateHdr) continue
+      const ts = Date.parse(dateHdr)
+      const rtt = t3 - t0
+      const mid = t0 + rtt/2
+      const off = ts - mid
+      if (rtt < best.rtt) best = { rtt, off }
+      await new Promise(r=>setTimeout(r, 50))
+    }
+    window.__gwClockOffsetMs = best.off
+    return best.off
+  } catch (_e) {
+    return 0
+  }
+}

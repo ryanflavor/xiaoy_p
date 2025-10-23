@@ -39,3 +39,6 @@ test('Proof: UI subscribes and receives gateway message', async ({ page }) => {
   await page.waitForTimeout(1000)
   await page.screenshot({ path: test.info().outputPath('proof-received.png') })
 })
+// @live Requires live gateway on dynamic port (:18080 in test)
+const LIVE = process.env.E2E_LIVE === '1'
+test.skip(!LIVE, 'Requires live gateway (:18080)')

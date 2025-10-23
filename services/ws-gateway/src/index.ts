@@ -3,7 +3,7 @@ import https from 'node:https';
 import url from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
 import pino from 'pino';
-import { connect, StringCodec, type NatsConnection, type Subscription } from 'nats';
+import { connect, type NatsConnection, type Subscription } from 'nats';
 import { loadConfig } from './config.js';
 import { compileWhitelist, isSubjectAllowed } from './acl.js';
 import { metricsText, wsActiveConnections, wsMessagesDropped, natsReconnects, setWsActive, recordForwarded, recordSlowConsumer, updateQueueSize, removeQueueSize } from './metrics.js';
@@ -51,15 +51,15 @@ async function connectNats(): Promise<NatsConnection> {
   return natsConn;
 }
 
+type SubEntry = { subject: string; sub: Subscription };
 type ClientCtx = {
   id: string;
   socket: WebSocket;
-  subs: Subscription[];
+  subs: SubEntry[];
   queue: OutboundQueue<Uint8Array>;
 };
 
 const clients = new Map<string, ClientCtx>();
-const sc = StringCodec();
 
 function newClientId() { return Math.random().toString(36).slice(2, 10); }
 
@@ -68,7 +68,7 @@ async function handleUpgrade(req: http.IncomingMessage, socket: any, head: Buffe
     // Origin check
     const origin = req.headers['origin'] as string | undefined;
     if (cfg.allowedOrigins !== '*' && origin && !cfg.allowedOrigins.includes(origin)) {
-      log.warn({ origin }, 'XYW001 origin not allowed');
+      log.warn({ origin, allowed: cfg.allowedOrigins }, 'XYW001 origin not allowed');
       socket.destroy();
       return;
     }
@@ -76,18 +76,24 @@ async function handleUpgrade(req: http.IncomingMessage, socket: any, head: Buffe
     const parsed = url.parse(req.url || '', true);
     const token = extractTokenFromHeaders(req.headers as any, (parsed.query['token'] as string | undefined) ?? null);
     if (!token) {
-      log.warn('XYW001 missing token');
-      socket.destroy();
-      return;
+      if (cfg.JWT_OPTIONAL) {
+        log.warn({ path: parsed.pathname }, 'XYW001 missing token (dev optional)');
+      } else {
+        log.warn({ path: parsed.pathname }, 'XYW001 missing token');
+        socket.destroy();
+        return;
+      }
+    } else {
+      await verifyJwt(token, {
+        jwksUrl: cfg.JWT_JWKS_URL || undefined,
+        publicKeyPemPathOrString: cfg.JWT_PUBLIC_KEY || undefined,
+        allowedAud: cfg.allowedAud,
+        allowedIss: cfg.allowedIss,
+      });
     }
-    await verifyJwt(token, {
-      jwksUrl: cfg.JWT_JWKS_URL || undefined,
-      publicKeyPemPathOrString: cfg.JWT_PUBLIC_KEY || undefined,
-      allowedAud: cfg.allowedAud,
-      allowedIss: cfg.allowedIss,
-    });
 
     if (parsed.pathname !== cfg.WS_PATH) {
+      log.warn({ got: parsed.pathname, expected: cfg.WS_PATH }, 'XYW003 invalid WS path');
       socket.destroy();
       return;
     }
@@ -98,7 +104,7 @@ async function handleUpgrade(req: http.IncomingMessage, socket: any, head: Buffe
     });
   } catch (err) {
     log.warn({ err }, 'XYW001 token verification failed');
-    try { socket.destroy(); } catch {}
+    try { socket.destroy(); } catch { void 0 }
   }
 }
 
@@ -120,7 +126,7 @@ async function main() {
 
   server.on('upgrade', (req, socket, head) => handleUpgrade(req, socket, head, server, wss));
 
-  wss.on('connection', async (ws, req) => {
+  wss.on('connection', async (ws, _req) => {
     const id = newClientId();
     const ctx: ClientCtx = { id, socket: ws, subs: [], queue: new OutboundQueue(cfg.WS_SEND_QUEUE_MAX) };
     clients.set(id, ctx);
@@ -134,8 +140,8 @@ async function main() {
       try {
         const msg = JSON.parse(data.toString());
         if (msg.type === 'subscribe' && Array.isArray(msg.subjects)) {
-          // Clear existing subscriptions first
-          for (const s of ctx.subs) try { s.unsubscribe(); } catch {}
+          // Clear existing subscriptions first; replace with provided list
+          for (const s of ctx.subs) try { s.sub.unsubscribe(); } catch { void 0 }
           ctx.subs = [];
           for (const subj of msg.subjects) {
             if (!isSubjectAllowed(subj, allowRes)) {
@@ -156,21 +162,42 @@ async function main() {
                 flushQueue(ctx);
               }
             })().catch((e) => log.error({ e }, 'subscription loop error'));
-            ctx.subs.push(sub);
+            ctx.subs.push({ subject: subj, sub });
           }
+          return;
+        }
+        if (msg.type === 'unsubscribe' && Array.isArray(msg.subjects)) {
+          // Remove only specified subjects; keep others
+          const targets = new Set<string>(msg.subjects);
+          const remain: SubEntry[] = [];
+          for (const s of ctx.subs) {
+            if (targets.has(s.subject)) {
+              try { s.sub.unsubscribe(); } catch { void 0 }
+              log.info({ id, subj: s.subject }, 'client unsubscribed');
+            } else {
+              remain.push(s);
+            }
+          }
+          ctx.subs = remain;
+          return;
         }
       } catch (e) {
         log.warn({ e }, 'invalid client message');
       }
     });
 
-    ws.on('close', () => {
-      for (const s of ctx.subs) try { s.unsubscribe(); } catch {}
+    ws.on('error', (e) => {
+      log.warn({ id, e: String((e as any)?.message || e) }, 'client socket error');
+    });
+
+    ws.on('close', (code, reason) => {
+      for (const s of ctx.subs) try { s.sub.unsubscribe(); } catch { void 0 }
       clients.delete(id);
       wsActiveConnections.dec();
       setWsActive(clients.size);
       removeQueueSize(id);
-      log.info({ id }, 'client disconnected');
+      const r = Buffer.isBuffer(reason) ? reason.toString() : String(reason || '')
+      log.info({ id, code, reason: r }, 'client disconnected');
     });
   });
 
@@ -178,12 +205,20 @@ async function main() {
     if (!req.url) return res.end();
     const { pathname } = url.parse(req.url);
     if (pathname === cfg.HEALTH_PATH) {
+      // CORS for dev tooling (allow demo UI to read Date header for clock sync)
+      res.setHeader('access-control-allow-origin', '*');
+      res.setHeader('access-control-expose-headers', 'date');
+      res.setHeader('date', new Date().toUTCString());
       const healthy = !!natsConn;
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify({ natsConnected: healthy, clients: clients.size }));
       return;
     }
     if (pathname === cfg.METRICS_PATH) {
+      // CORS for dev tooling
+      res.setHeader('access-control-allow-origin', '*');
+      res.setHeader('access-control-expose-headers', 'date');
+      res.setHeader('date', new Date().toUTCString());
       res.setHeader('content-type', 'text/plain; version=0.0.4');
       res.end(await metricsText());
       return;

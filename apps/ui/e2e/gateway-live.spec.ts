@@ -81,3 +81,6 @@ test('Gateway Live E2E: subscribe and receive message', async ({ page }) => {
   // Cleanup gateway
   try { gw.child.kill() } catch {}
 })
+// @live Requires live gateway stack
+const LIVE = process.env.E2E_LIVE === '1'
+test.skip(!LIVE, 'Requires live gateway')

@@ -1,0 +1,75 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>7</storyId>
+    <title>运维仪表盘与 SLO/错误预算</title>
+    <status>Draft</status>
+    <generatedAt>2025-10-21T00:00:00Z</generatedAt>
+    <generator>BMAD Story Context Workflow (#yolo)</generator>
+    <sourceStoryPath>docs/stories/story-1.7.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>开发与运维团队（Enabler，服务 Trader）</asA>
+    <iWant>构建运维仪表盘并引入 SLO/SLI 与错误预算治理</iWant>
+    <soThat>在燃尽率异常时尽早预警并采取降级/恢复动作，保障交易时段稳定</soThat>
+    <tasks><![CDATA[
+
+- [ ] AC1 — 指标聚合与可视：汇总 ws-gateway/aggregator-go `/metrics` 与前端指标 API；定义面板与燃尽（5m/1h）
+- [ ] AC2 — 过滤/分组：Environment（dev/prod）/Panel/Group 维度与 Top‑N 视图
+- [ ] AC3 — 阈值与告警联动：加载阈值配置；越界事件与降级钩子；恢复判定
+
+    ]]></tasks>
+  </story>
+
+  <acceptanceCriteria><![CDATA[
+
+1. 指标可视与错误预算燃尽：展示 p50/p95/p99、慢消费者、重连/订阅风暴计数与错误预算燃尽；近 5m/1h 窗口显示。
+2. 过滤与分组：支持按环境/面板/分组过滤；可对比 Top‑N 视图。
+3. 阈值配置与告警联动（NFR004）：阈值可配置并联动告警；触发事件记录并对接降级钩子。
+  ]]></acceptanceCriteria>
+
+  <artifacts>
+    <docs><![CDATA[
+- docs/epics.md — Epic 1 / Story 1.7：目标与 AC（运维仪表盘、SLO/错误预算）。摘录：阐明需展示 p50/p95/p99、慢消费者与错误预算，并要求阈值可配置与告警联动。
+- docs/PRD.md — FR013–FR015、NFR001/NFR004。摘录：端到端观测指标、降级三级（采样→裁剪→停更），性能门槛 P95<120ms/P99<180ms；SLO/错误预算与可视化要求。
+- docs/solution-architecture.md — Observability 与组件职责。摘录：ws-gateway/aggregator-go 暴露 /metrics；前端从 SharedWorker 采集 FPS/延迟/带宽；Grafana/Loki/Tempo 作为观测栈。
+- docs/tech-spec-epic-1.md — Workflows/NFR/Acceptance。摘录：/healthz、/metrics 指标集合；慢消费者保护；端到端延迟阈值与测试策略。
+- docs/errors.md — 错误码与呈现规则。摘录：统一错误提示与重试策略，用于越界与降级提示一致性。
+- docs/epic-alignment-matrix.md — Epic→Story 对齐。摘录：Story 1.7 依赖 Story 1.5 指标与 Story 1.6 渲染基线。
+- docs/technical-decisions.md — 指标命名与采样策略。摘录：prom-client/client_golang 使用建议与标签基数控制。
+- docs/cohesion-check-report.md — 术语与字段一致性。摘录：指标名称、单位、分位标注统一性检查结论。
+    ]]></docs>
+    <code><![CDATA[
+- services/ws-gateway/src/metrics.ts — kind: service; symbol: registerMetrics; lines: 1-120 (planned); reason: 暴露 ws_active、ws_msgs_rate、slow_consumers，供仪表盘消费。
+- services/aggregator-go/internal/metrics/metrics.go — kind: service; symbol: InitMetrics; lines: 1-150 (planned); reason: ticks_out、snapshots_out、nats_req_latency 指标输出。
+- apps/ui/src/overlay/MetricsOverlay.tsx — kind: component; symbol: MetricsOverlay; lines: 1-200 (planned); reason: 展示 FPS/p50/p95/p99/带宽与慢消费者并支持阈值高亮。
+- apps/ui/src/metrics/slo.ts — kind: util; symbol: computeBurnRate; lines: 1-120 (planned); reason: 计算 5m/1h 窗口的错误预算燃尽与越界判断。
+- apps/ui/test/metrics-api.test.mjs — kind: test; symbol: metrics API tests; lines: 1-100 (planned); reason: 校验订阅/查询与刷新节奏 ≤500ms。
+    ]]></code>
+    <dependencies><![CDATA[
+- Node：prom-client@15.x、react@19、zustand@5、vitest@2
+- Go：client_golang@1.23、testify@1.9
+- UI：tanstack-table、tailwind（可视表结构与样式）
+- Python（可选）：prometheus-client@0.20（AlgoExec 指标）
+    ]]></dependencies>
+  </artifacts>
+
+  <constraints><![CDATA[
+- 性能：UI 帧时 p95 ≤ 16.7ms / p99 ≤ 25ms；端到端 P95 < 120ms / P99 < 180ms（PRD）
+- 降级：采样降频 → 字段裁剪 → 面板停更（PRD FR014）
+- 观测：/metrics 暴露与 Prometheus 抓取；Grafana 仪表盘；慢消费者与重连/订阅风暴治理（Solution Architecture）
+  ]]></constraints>
+
+  <interfaces><![CDATA[
+- HTTP：/metrics、/healthz（ws-gateway、aggregator-go）
+- UI API：metrics 查询/订阅接口（apps/ui）
+- 配置：阈值配置（env/config），事件/告警输出通道（待定）
+  ]]></interfaces>
+
+  <tests>
+    <standards><![CDATA[Node: node --test / vitest；Go: testing；E2E: Playwright；前端：指标 API/渲染单测]]></standards>
+    <locations><![CDATA[test/**, apps/ui/test/**, services/**/test/**]]></locations>
+    <ideas><![CDATA[/metrics 冒烟；燃尽计算单元测试；过滤/分组逻辑；阈值越界事件与降级联动；Top‑N 视图排序正确性]]></ideas>
+  </tests>
+</story-context>

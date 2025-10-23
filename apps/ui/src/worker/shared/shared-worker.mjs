@@ -8,7 +8,7 @@ function ensureHeartbeat() {
   if (heartbeatTimer != null) return;
   heartbeatTimer = self.setInterval(() => {
     for (const p of ports) {
-      try { p.postMessage({ kind: "heartbeat", ts: Date.now(), connections: WSManager.createdConnections }); } catch {}
+      try { p.postMessage({ kind: "heartbeat", ts: Date.now(), connections: WSManager.createdConnections }); } catch { void 0 }
     }
   }, 15000);
 }
@@ -37,9 +37,9 @@ self.onconnect = (evt) => {
     }
     Promise.resolve(asText(data)).then((text) => {
       let payload = text
-      try { payload = JSON.parse(text) } catch {}
+      try { payload = JSON.parse(text) } catch { void 0 }
       for (const p of ports) {
-        try { p.postMessage({ kind: 'ws', payload }) } catch {}
+        try { p.postMessage({ kind: 'ws', payload }) } catch { void 0 }
       }
     })
   }
@@ -47,16 +47,16 @@ self.onconnect = (evt) => {
   port.onmessage = (e) => {
     const msg = e.data || {};
     if (msg.kind === "init" && typeof msg.url === "string") {
+      // Prefer query param token for compatibility; avoid subprotocol negotiation flakiness
       const u = (() => { try { return new URL(msg.url, 'http://localhost') } catch { return null } })()
       let urlStr = msg.url
       if (u && msg.token) { u.searchParams.set('token', String(msg.token)); urlStr = u.toString().replace('http://localhost', '') }
-      const protocols = msg.token ? ['bearer', String(msg.token)] : undefined
-      WSManager.connect({ url: urlStr, protocols });
+      WSManager.connect({ url: urlStr });
       port.postMessage({ kind: "ready", createdConnections: WSManager.createdConnections });
       return;
     }
     if (msg.kind === "close") {
-      try { port.close && port.close(); } catch {}
+      try { port.close && port.close(); } catch { void 0 }
       ports.delete(port);
       if (ports.size === 0 && heartbeatTimer != null) {
         self.clearInterval && self.clearInterval(heartbeatTimer);
@@ -74,12 +74,12 @@ self.onconnect = (evt) => {
       return;
     }
     if (msg.kind === 'subscribe' && typeof msg.topic === 'string') {
-      try { WSManager.addSubscription(msg.topic) } catch {}
+      try { WSManager.addSubscription(msg.topic) } catch { void 0 }
       port.postMessage({ kind: 'ack', what: 'subscribe', topic: msg.topic })
       return
     }
     if (msg.kind === 'unsubscribe' && typeof msg.topic === 'string') {
-      try { WSManager.removeSubscription(msg.topic) } catch {}
+      try { WSManager.removeSubscription(msg.topic) } catch { void 0 }
       port.postMessage({ kind: 'ack', what: 'unsubscribe', topic: msg.topic })
       return
     }

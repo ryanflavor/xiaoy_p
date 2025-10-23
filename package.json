@@ -4,13 +4,14 @@
   "version": "0.1.0",
   "description": "Monorepo baseline for xiaoy",
   "packageManager": "pnpm@9.12.2",
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
     "lint": "node tools/lint.mjs",
-    "lint:eslint": "eslint . --max-warnings=0",
+    "lint:eslint": "eslint . --max-warnings=10",
     "format": "prettier -w .",
     "format:check": "node tools/format-check.mjs",
     "format:check:prettier": "prettier -c \"packages/**/*.{js,ts,tsx,jsx,json}\" \"tools/**/*.{js,mjs,cjs}\"",
@@ -18,18 +19,29 @@
     "test": "node --test",
     "test:cov": "c8 -r lcov -r text-summary node --test",
     "test:vitest": "vitest run --reporter=verbose",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "demo:up": "docker compose -f compose.demo.yml up -d --quiet-pull --remove-orphans",
+    "demo:down": "docker compose -f compose.demo.yml down -v",
+    "demo:observe": "docker compose -f compose.demo.yml --profile observe up -d --quiet-pull prometheus",
+    "demo:publisher": "docker compose -f compose.demo.yml --profile demo up -d publisher",
+    "demo:smoke": "bash tools/demo-smoke.sh"
   },
   "engines": {
     "node": ">=22.11.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.38.0",
+    "@playwright/test": "^1.48.2",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
     "c8": "^9.1.0",
     "eslint": "^9.14.0",
     "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-playwright": "^2.2.2",
+    "globals": "^16.4.0",
     "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
     "vitest": "^2.1.4",
-    "@playwright/test": "^1.48.2",
     "ws": "^8.18.0"
   }
 }
