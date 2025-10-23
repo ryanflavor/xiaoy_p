@@ -6,13 +6,14 @@ test.use({ video: 'on' })
 test('Compose Demo E2E: single-connection + fanout + receive + metrics non-empty', async ({ page, context }) => {
   // Preconditions: `docker compose -f compose.demo.yml up -d` is running
   // Token from repo root (fallback to services/ws-gateway)
-  const token = (() => {
+  const token = process.env.WS_TOKEN || (() => {
     try { return readFileSync('.demo_token.txt', 'utf8').trim() } catch {}
     try { return readFileSync('services/ws-gateway/.demo_token.txt', 'utf8').trim() } catch {}
     throw new Error('demo token not found')
   })()
 
-  const baseUrl = `http://localhost:5174/demo/index.html?url=ws://localhost:8080/ws&token=${encodeURIComponent(token)}`
+  const wsUrl = process.env.WS_URL || 'ws://localhost:8080/ws'
+  const baseUrl = `http://localhost:5174/demo/index.html?url=${encodeURIComponent(wsUrl)}&token=${encodeURIComponent(token)}`
 
   // Open two tabs to assert single-connection fanout via SharedWorker
   const page1 = page
@@ -47,4 +48,6 @@ test('Compose Demo E2E: single-connection + fanout + receive + metrics non-empty
   const metricsText = await (await fetch('http://localhost:8080/metrics')).text()
   expect(metricsText).toMatch(/xy_ws_messages_forwarded_total|ws_msgs_rate/)
 })
-
+// @live Requires live gateway / NATS / compose
+const LIVE = process.env.E2E_LIVE === '1'
+test.skip(!LIVE, 'Requires live gateway (:8080) and compose stack')

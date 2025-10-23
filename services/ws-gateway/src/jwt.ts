@@ -16,6 +16,7 @@ export type JwtClaims = Record<string, any> & {
 
 export async function verifyJwt(token: string, opts: JwtOptions): Promise<JwtClaims> {
   const { jwksUrl, publicKeyPemPathOrString, allowedAud, allowedIss } = opts;
+  const clockToleranceSec = Number(process.env.JWT_CLOCK_TOLERANCE_SEC || '0') || 0
   let key: any;
   if (jwksUrl) {
     key = createRemoteJWKSet(new URL(jwksUrl));
@@ -31,6 +32,7 @@ export async function verifyJwt(token: string, opts: JwtOptions): Promise<JwtCla
   const { payload } = await jwtVerify(token, key, {
     audience: allowedAud,
     issuer: allowedIss,
+    clockTolerance: clockToleranceSec,
   });
   return payload as JwtClaims;
 }

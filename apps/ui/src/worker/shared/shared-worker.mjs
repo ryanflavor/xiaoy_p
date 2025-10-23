@@ -47,11 +47,11 @@ self.onconnect = (evt) => {
   port.onmessage = (e) => {
     const msg = e.data || {};
     if (msg.kind === "init" && typeof msg.url === "string") {
+      // Prefer query param token for compatibility; avoid subprotocol negotiation flakiness
       const u = (() => { try { return new URL(msg.url, 'http://localhost') } catch { return null } })()
       let urlStr = msg.url
       if (u && msg.token) { u.searchParams.set('token', String(msg.token)); urlStr = u.toString().replace('http://localhost', '') }
-      const protocols = msg.token ? ['bearer', String(msg.token)] : undefined
-      WSManager.connect({ url: urlStr, protocols });
+      WSManager.connect({ url: urlStr });
       port.postMessage({ kind: "ready", createdConnections: WSManager.createdConnections });
       return;
     }

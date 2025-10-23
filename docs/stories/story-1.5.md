@@ -23,21 +23,21 @@ Status: Done
 
 ## Tasks / Subtasks
 
-- [ ] AC1 — 服务端可观测与指标
+- [x] AC1 — 服务端可观测与指标
   - [x] ws-gateway：集成 `prom-client` 并暴露 `/metrics`（新增别名：`ws_active`、`ws_msgs_rate`、`slow_consumers`）
   - [x] aggregator-go：集成 `client_golang` 并暴露 `/metrics`（`ticks_out`、`snapshots_out`、`nats_req_latency`）
   - [x] 指标命名与帮助文本对齐《Tech Spec》与《Solution Architecture》约定
   - [x] 基础健康探针：`/healthz` 与就绪探针
-- [ ] AC1 — 前端基础指标
+- [x] AC1 — 前端基础指标
   - [x] SharedWorker：批量处理窗口（16–33ms）内采集 fps/端到端延迟/带宽/慢消费者事件（沿用现有骨架 + 暴露 API）
   - [x] UI：在开发/诊断模式渲染指标面板（隐藏于生产缺省）
-- [ ] AC2 — 指标浮层 API/钩子
+- [x] AC2 — 指标浮层 API/钩子
   - [x] 暴露 `metrics` 查询/订阅接口（模块 API 形态，供浮层消费）
   - [x] 示例浮层：渲染 FPS、p50/p95/p99、带宽、慢消费者（占位实现）
-- [ ] AC3 — SLO/错误预算配置
+- [x] AC3 — SLO/错误预算配置
   - [x] 定义 SLO 阈值与错误预算配置（env/config）；校验并加载到运行时
   - [x] 记录阈值越界事件并预留降级联动钩子
-- [ ] 测试与验证
+- [x] 测试与验证
   - [x] Node 测试：`/metrics` 响应与关键指标存在性（ws-gateway Vitest 通过）
   - [x] Go 测试：`/metrics` 暴露与指标存在性（新增 httptest，用于 CI 环境）
   - [x] 前端测试：API/订阅与 FPS/延迟快照单测通过；面板为演示实现

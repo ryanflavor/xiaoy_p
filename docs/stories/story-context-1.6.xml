@@ -1,0 +1,94 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>6</storyId>
+    <title>最小可见面板（占位列表/图表）</title>
+    <status>Draft</status>
+    <generatedAt>2025-10-21</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-1.6.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>As a trader,</asA>
+    <iWant>I want a minimal panel,</iWant>
+    <soThat>so that I can verify rendering and latency budget.</soThat>
+    <tasks>- [ ] 面板骨架与状态切片（Zustand）
+  - [ ] 初始化页面容器与路由占位（/dashboard → MinimalPanel）
+  - [ ] 切片：`ui/minimalPanel`（订阅、指标、降级开关状态）
+- [ ] OffscreenCanvas 列表/图表增量绘制（AC1）
+  - [ ] 建立 `workers/shared-worker` 与 `workers/renderer` 通道；16–33ms 批处理
+  - [ ] 列表：行虚拟化（TanStack Table），批量 patch；绘制预算≤8ms
+  - [ ] 简单图表：Canvas 轨迹绘制；数据点节流与采样策略
+  - [ ] 压测样例与帧时统计
+- [ ] 指标可视（AC2）
+  - [ ] 采集 FPS（rAF 帧时间）、端到端延迟（nats.ts→rAF）、带宽（bytes/sec）
+  - [ ] `components/MetricsOverlay` 显示 p50/p95/p99 与慢消费者计数
+  - [ ] /metrics 接口联动（ws-gateway 指标）
+- [ ] 降级策略开关（AC3）
+  - [ ] 开关：采样降频/字段裁剪/停更；显式恢复条件
+  - [ ] 共享状态与 UI 联动；事件打点
+- [ ] SharedWorker 单连接一致性
+  - [ ] 单条 WS 连接建立；多标签扇出（BroadcastChannel/MessagePort）
+  - [ ] 断线指数回退 + 并发上限
+- [ ] 测试与验收
+  - [ ] 单元：批处理合并、渲染切片预算
+  - [ ] e2e：≥4 窗口并开仍满足 AC1–AC3
+  - [ ] 性能基线：P95 < 120ms，P99 < 180ms（端到端）
+- [ ] 文档与引用
+  - [ ] 在“Dev Notes/References”中标注来源文档章节</tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. OffscreenCanvas 增量绘制列表/简单图表；渲染预算每帧 ≤ 8ms。
+2. FPS/端到端延迟/带宽可视。
+3. 降级策略开关可触发与恢复。
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>docs/PRD.md#L14: - 在 4–5 个窗口并开与峰值 4k tick/s 场景下，UI 稳定 ≥ 60 FPS，端到端延迟 P95 < 120ms、P99 < 180ms。
+docs/PRD.md#L47: - FR007: Worker 解码 + OffscreenCanvas 增量绘制；渲染“时间预算”每帧 ≤ 8ms，超预算切片。
+docs/PRD.md#L53: - FR013: 端到端观测：adapter→aggregator→WS→UI 埋点，输出 p50/p95/p99、慢消费者事件与近 N 窗口。
+docs/solution-architecture.md#L9: 本项目为 yueweioption_xiaoydb 的架构重构版：保留 Python/vn.py 交易 API 与策略执行能力，全面替换 UI 与通信层为 Web + NATS 架构。总体目标是在 4–5 窗口并开的高吞吐场景下，维持 UI ≥ 60 FPS 与端到端 P95 < 120ms，同时实现“仅追加”的契约治理、可观测与可降级、以及单连接一致性（SharedWorker 扇出）。
+docs/solution-architecture.md#L66: 实时流：NATS → WS（SharedWorker 合并/去重 16–33ms 批次）；请求‑应答：NATS RPC（管理/指令），少量管理面走 HTTP(FastAPI)。前端使用 Fetch/WS 与 Gateway 交互。
+docs/solution-architecture.md#L141: - GET /healthz, /metrics（Prometheus）
+docs/tech-spec-epic-1.md#L1: # Technical Specification: 基础设施与单连接骨架（Foundation & Single-Connection）
+docs/tech-spec-epic-1.md#L106: ### Security
+docs/tech-spec-epic-1.md#L160: | -- | ------------- | --------- | --------- | ----------- |
+docs/epics.md#L106: 1. OffscreenCanvas 增量绘制列表/简单图表；渲染预算每帧 ≤ 8ms。
+docs/epics.md#L107: 2. FPS/端到端延迟/带宽可视。
+docs/epics.md#L108: 3. 降级策略开关可触发与恢复。
+docs/stories/story-1.6.md#L1: # Story 1.6: 最小可见面板（占位列表/图表）</docs>
+    <code>apps/ui/src/overlay/metrics-overlay.mjs#L14-L21 - 显示 FPS 与 p50/p95/p99（满足 AC2 指标可视）
+apps/ui/src/lib/merge/batcher.mjs#L19-L23 - 默认 16ms 批处理间隔（满足 AC1 增量绘制预算）
+apps/ui/src/lib/merge/batcher.mjs#L54-L59 - 定时调度批次刷新，控制渲染节奏
+apps/ui/src/worker/shared/shared-worker.mjs#L22-L45 - 单连接消息扇出至多端口（满足单连接一致性）
+apps/ui/src/lib/ws/manager.mjs#L65-L76 - 重连后恢复订阅（配合 AC3 的恢复）
+apps/ui/src/lib/ws/manager.mjs#L137-L155 - 指数回退重连（AC3 降级/恢复策略）
+services/aggregator-go/main.go#L41-L47 - 暴露 /metrics 健康与指标端点（支撑 AC2 可视化）
+services/aggregator-go/main.go#L56-L58 - 采样 NATS 请求延迟（ms）供观测</code>
+    <dependencies>@playwright/test@^1.48.2
+c8@^9.1.0
+eslint@^9.14.0
+eslint-config-prettier@^9.1.0
+prettier@^3.3.3
+vitest@^2.1.4
+ws@^8.18.0</dependencies>
+  </artifacts>
+
+  <constraints>- 架构约束（Solution Architecture）
+  - 单连接 + SharedWorker 扇出；16–33ms 批处理；断线≤3s 恢复。[Source: docs/solution-architecture.md]
+  - 指标：/metrics 暴露 ws_active、slow_consumers、ticks_out 等。[Source: docs/solution-architecture.md]
+- 规范约束（PRD）
+  - 帧时预算：每帧 ≤ 8ms；端到端 P95 < 120ms、P99 < 180ms。[Source: docs/PRD.md]
+  - 降级三级：采样→裁剪→停更；恢复条件明确。[Source: docs/PRD.md]
+- 技术细化（Tech Spec Epic 1）
+  - SharedWorker 合并/去重；网关限速与慢消费者保护；快照重建 ≤ 1s。[Source: docs/tech-spec-epic-1.md]
+遵循 PRD/NFR 性能与降级目标；单连接 + SharedWorker；契约仅追加；NATS ACL 最小权限；慢消费者保护。</constraints>
+  <interfaces>WS 单连接（/ws-gateway）；NATS：xy.md.tick.*、xy.md.snapshot.*；HTTP: /metrics, /healthz。</interfaces>
+  <tests>
+    <standards>Playwright + Vitest；前端单元/组件测试；性能基线；端到端 rAF/FPS 采样。</standards>
+    <locations>test/；apps/ui/**/__tests__；services/**/tests</locations>
+    <ideas>AC1: 列表/图表帧时≤8ms；AC2: FPS/端到端/带宽指标可见；AC3: 降级开关触发/恢复；断线≤3s 恢复视图。</ideas>
+  </tests>
+</story-context>

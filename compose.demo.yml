@@ -17,6 +17,10 @@ services:
       NATS_URLS: nats://nats:4222
       WS_SUBJECT_WHITELIST: "xy.md.>"
       ALLOWED_ORIGINS: "*"
+      # Dev optimization: disable JWT enforcement to unblock feature work
+      JWT_OPTIONAL: "1"
+      # Small clock tolerance if tokens are provided (optional)
+      JWT_CLOCK_TOLERANCE_SEC: "30"
       JWT_PUBLIC_KEY: /app/.demo_pub.pem
       LOG_LEVEL: info
     command: sh -lc "npm i && npm run dev"
@@ -66,7 +70,7 @@ services:
        NATS_URL=$$NATS_URL SUBJECT=$$SUBJECT INTERVAL_MS=$$INTERVAL_MS node examples/publish-interval.mjs"
     depends_on:
       - nats
-    profiles: ["demo"]
+    # Enabled by default for a live data stream in dev
 
   # One-off WebSocket client used by smoke to trigger forwarding metrics
   wsclient:

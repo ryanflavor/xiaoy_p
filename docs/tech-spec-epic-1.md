@@ -183,3 +183,31 @@ Out-of-Scope（后续 Epic/Story 交付）：
 - Integration：NATS RPC/流主题连通；aggregator-go 输出与分片；/metrics 暴露与采集。
 - E2E：多窗口单连接、断线恢复（≤3s）、场景切换不抖动；权限/ACL 正反用例。
 - Performance：tick 注入压测（33ms 增量/2–5s 快照）；UI FPS 与端到端延迟仪表板对比阈值。
+
+---
+
+### Demo Orchestration（新增）
+
+- 根级编排：`compose.demo.yml` 提供一键拉起 dev 组合：`nats`、`gateway`、`aggregator`、`ui`，可选 `prometheus`、`publisher`。
+- 关键端口：NATS 4222、WS 网关 8080、Aggregator 8090、UI Demo 5174、Prometheus 9090。
+- 安全开关（dev）：`JWT_PUBLIC_KEY=/app/.demo_pub.pem`、`ALLOWED_ORIGINS=*`（仅限 dev/CI；生产需白名单）。
+- 快速命令：
+  - `npm run demo:up` / `npm run demo:down`
+  - `npm run demo:publisher`（启用 demo 发布）
+  - `npm run demo:observe`（启用 Prometheus 抓取）
+  - `npm run demo:smoke`（健康检查 + 单次订阅与转发验证）
+
+### E2E Strategy（新增）
+
+- 正路径：UI（SharedWorker）→ ws-gateway → NATS → demo-publisher（周期消息）闭环；页面可见“demo-msg-*”。
+- 负路径：未授权主题发布应被拒绝并产生指标/日志计数（后续在 CI 中加入）。
+- 指标抓取：Prometheus 抓取 `gateway:8080/metrics` 与 `aggregator:8090/metrics`；最小字段集 `xy_ws_messages_forwarded_total`、`ws_msgs_rate`、`ticks_out`。
+- Playwright：`apps/ui/e2e/demo-compose.spec.ts` 验证“单连接+扇出+收包+指标非空”。
+
+### Acceptance Mapping（更新）
+
+| 交付 | 验证 | 工具/文件 |
+|---|---|---|
+| 1.6a 集成骨架 | 一键跑通 + e2e 通过 | compose.demo.yml、apps/ui/e2e/demo-compose.spec.ts |
+| 1.6 最小面板 | UI 接入与两项指标可见 | apps/ui/demo、SharedWorker manager |
+| 1.7 运维仪表 | Prom 抓取 + 字段字典 | infra/prometheus/prometheus.yml、docs/observability/field-dictionary.md |

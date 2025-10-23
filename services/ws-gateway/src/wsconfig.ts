@@ -9,5 +9,12 @@ export function wsServerOptions(cfg: AppConfig): WebSocketServerOptions {
     noServer: true,
     perMessageDeflate: false,
     maxPayload: 1024 * 1024, // 1 MiB safety cap
+    // Select a subprotocol if the client offered any; prefer 'bearer'
+    handleProtocols: (protocols: Set<string>) => {
+      if (protocols.has('bearer')) return 'bearer'
+      // pick first deterministically to satisfy some clients
+      for (const p of protocols) return p
+      return false
+    },
   }
 }

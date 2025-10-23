@@ -15,10 +15,17 @@ const mime = (p) => {
   return 'text/plain; charset=utf-8'
 }
 
+const DEMO_DISABLE = process.env.DEMO_DISABLE === '1'
+
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, `http://${req.headers.host}`)
   let filePath = decodeURIComponent(u.pathname)
   if (filePath === '/' ) filePath = '/demo/index.html'
+
+  if (DEMO_DISABLE && filePath.startsWith('/demo/')) {
+    res.writeHead(404).end('demo disabled')
+    return
+  }
   const abs = path.join(root, filePath)
   if (!abs.startsWith(root)) { res.writeHead(403).end('forbidden'); return }
   fs.readFile(abs, (err, data) => {

@@ -1,0 +1,74 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.x" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "10.x" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "2.x" }
+  ],
+  "title": "XIAOY • 运维仪表盘 (Story 1.7)",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "WS 活动连接 (ws_active)",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [ { "expr": "ws_active" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "WS 转发速率 (ws_msgs_rate)",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "targets": [ { "expr": "ws_msgs_rate" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "慢消费者 (slow_consumers)",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "targets": [ { "expr": "slow_consumers" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Aggregator 输出 (ticks_out / snapshots_out)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "rate(ticks_out[5m])" },
+        { "expr": "rate(snapshots_out[5m])" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "NATS 请求延迟 p50/p95/p99 (ms)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(nats_req_latency_bucket[5m])) by (le)) * 1" },
+        { "expr": "histogram_quantile(0.95, sum(rate(nats_req_latency_bucket[5m])) by (le)) * 1" },
+        { "expr": "histogram_quantile(0.99, sum(rate(nats_req_latency_bucket[5m])) by (le)) * 1" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "错误预算燃尽 (5m/1h 近似)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "(sum(rate(slow_consumers[5m])))/(0.001)" },
+        { "expr": "(sum(rate(slow_consumers[1h])))/(0.001)" }
+      ],
+      "description": "演示近似：以 slow_consumers 速率除以 0.1% 预算系数，仅供演示；正式以 SLO 定义为准。"
+    }
+    ,
+    {
+      "type": "timeseries",
+      "title": "NATS 重连次数 (5m rate)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [ { "expr": "rate(xy_nats_reconnects_total[5m])" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "订阅风暴计数 (5m rate)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "targets": [ { "expr": "rate(xy_sub_storms_total[5m])" } ]
+    }
+  ]
+}

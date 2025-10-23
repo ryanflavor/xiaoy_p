@@ -18,7 +18,12 @@
     "test": "node --test",
     "test:cov": "c8 -r lcov -r text-summary node --test",
     "test:vitest": "vitest run --reporter=verbose",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "demo:up": "docker compose -f compose.demo.yml up -d --quiet-pull --remove-orphans",
+    "demo:down": "docker compose -f compose.demo.yml down -v",
+    "demo:observe": "docker compose -f compose.demo.yml --profile observe up -d --quiet-pull prometheus",
+    "demo:publisher": "docker compose -f compose.demo.yml --profile demo up -d publisher",
+    "demo:smoke": "bash tools/demo-smoke.sh"
   },
   "engines": {
     "node": ">=22.11.0"

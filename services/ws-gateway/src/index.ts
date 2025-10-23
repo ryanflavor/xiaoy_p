@@ -69,7 +69,7 @@ async function handleUpgrade(req: http.IncomingMessage, socket: any, head: Buffe
     // Origin check
     const origin = req.headers['origin'] as string | undefined;
     if (cfg.allowedOrigins !== '*' && origin && !cfg.allowedOrigins.includes(origin)) {
-      log.warn({ origin }, 'XYW001 origin not allowed');
+      log.warn({ origin, allowed: cfg.allowedOrigins }, 'XYW001 origin not allowed');
       socket.destroy();
       return;
     }
@@ -77,18 +77,24 @@ async function handleUpgrade(req: http.IncomingMessage, socket: any, head: Buffe
     const parsed = url.parse(req.url || '', true);
     const token = extractTokenFromHeaders(req.headers as any, (parsed.query['token'] as string | undefined) ?? null);
     if (!token) {
-      log.warn('XYW001 missing token');
-      socket.destroy();
-      return;
+      if (cfg.JWT_OPTIONAL) {
+        log.warn({ path: parsed.pathname }, 'XYW001 missing token (dev optional)');
+      } else {
+        log.warn({ path: parsed.pathname }, 'XYW001 missing token');
+        socket.destroy();
+        return;
+      }
+    } else {
+      await verifyJwt(token, {
+        jwksUrl: cfg.JWT_JWKS_URL || undefined,
+        publicKeyPemPathOrString: cfg.JWT_PUBLIC_KEY || undefined,
+        allowedAud: cfg.allowedAud,
+        allowedIss: cfg.allowedIss,
+      });
     }
-    await verifyJwt(token, {
-      jwksUrl: cfg.JWT_JWKS_URL || undefined,
-      publicKeyPemPathOrString: cfg.JWT_PUBLIC_KEY || undefined,
-      allowedAud: cfg.allowedAud,
-      allowedIss: cfg.allowedIss,
-    });
 
     if (parsed.pathname !== cfg.WS_PATH) {
+      log.warn({ got: parsed.pathname, expected: cfg.WS_PATH }, 'XYW003 invalid WS path');
       socket.destroy();
       return;
     }
@@ -181,13 +187,18 @@ async function main() {
       }
     });
 
-    ws.on('close', () => {
+    ws.on('error', (e) => {
+      log.warn({ id, e: String((e as any)?.message || e) }, 'client socket error');
+    });
+
+    ws.on('close', (code, reason) => {
       for (const s of ctx.subs) try { s.sub.unsubscribe(); } catch {}
       clients.delete(id);
       wsActiveConnections.dec();
       setWsActive(clients.size);
       removeQueueSize(id);
-      log.info({ id }, 'client disconnected');
+      const r = Buffer.isBuffer(reason) ? reason.toString() : String(reason || '')
+      log.info({ id, code, reason: r }, 'client disconnected');
     });
   });
 
