@@ -63,8 +63,8 @@ export class Batcher {
   stop () {
     this.#running = false
     if (this.#timer != null) {
-      try { if (typeof clearTimeout === 'function') clearTimeout(this.#timer) } catch {}
-      try { if (typeof clearImmediate === 'function') clearImmediate(this.#timer) } catch {}
+      try { if (typeof clearTimeout === 'function') clearTimeout(this.#timer) } catch { void 0 }
+      try { if (typeof clearImmediate === 'function') clearImmediate(this.#timer) } catch { void 0 }
     }
     this.#timer = null
   }

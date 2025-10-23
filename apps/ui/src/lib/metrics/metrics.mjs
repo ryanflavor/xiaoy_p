@@ -32,7 +32,6 @@ export function createFpsMeter (opts = {}) {
   const windowMs = opts.windowMs ?? 1000
 
   let running = false
-  let lastTs = 0
   const frameTs = []
 
   const onFrame = (ts) => {
@@ -47,7 +46,7 @@ export function createFpsMeter (opts = {}) {
   }
 
   return {
-    start () { if (running) return; running = true; lastTs = now(); (typeof raf==='function')? raf(onFrame) : schedule(onFrame) },
+    start () { if (running) return; running = true; (typeof raf==='function')? raf(onFrame) : schedule(onFrame) },
     stop () { running = false },
     fps () { if (frameTs.length < 2) return 0; const dt = (frameTs[frameTs.length-1] - frameTs[0]) || 1; return Math.round((frameTs.length-1) * 1000 / dt) },
     samples () { return frameTs.slice() },

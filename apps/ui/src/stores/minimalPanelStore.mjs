@@ -238,7 +238,7 @@ class MinimalPanelStore {
   }
 
   // Subscribe to a topic
-  subscribe(topic) {
+  subscribeTopic(topic) {
     if (!this.port) return
 
     this.port.postMessage({ kind: 'subscribe', topic })

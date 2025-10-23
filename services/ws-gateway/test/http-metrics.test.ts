@@ -14,7 +14,7 @@ describe('http /metrics endpoint (smoke)', () => {
         }
         res.statusCode = 404
         res.end('not found')
-      } catch (e) {
+  } catch (_e) {
         res.statusCode = 500
         res.end('error')
       }
@@ -33,4 +33,3 @@ describe('http /metrics endpoint (smoke)', () => {
     expect(text).toMatch(/xy_ws_active_connections|ws_active/)
   })
 })
-

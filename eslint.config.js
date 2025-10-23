@@ -21,15 +21,19 @@ export default [
       '**/*.html',
       'coverage/**',
       'playwright-report/**',
-      'test-results/**',
-      // Temporary ignores for WIP modules; re-enable after fixes
-      'apps/ui/src/pages/dashboard/MinimalPanel.mjs',
-      'apps/ui/src/stores/minimalPanelStore.mjs'
+      'test-results/**'
     ]
   },
 
   // Base JS rules
   js.configs.recommended,
+  {
+    files: ['**/*.{js,mjs,jsx}'],
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'all', caughtErrorsIgnorePattern: '^_' }],
+      'no-empty': 'warn'
+    }
+  },
 
   // TS files: parser + recommended rules (no project needed)
   {
@@ -46,7 +50,7 @@ export default [
       ...tsPlugin.configs.recommended.rules,
       // Loosen a few rules for migration phase
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': 'warn'
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'all', caughtErrorsIgnorePattern: '^_' }]
     }
   },
 
@@ -105,15 +109,8 @@ export default [
     },
     rules: {
       'no-empty': 'off',
-      'no-unused-vars': 'off'
-    }
-  },
-
-  // Final global relaxations (non-blocking)
-  {
-    rules: {
-      'no-empty': 'warn',
-      'no-unused-vars': 'warn'
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': 'off'
     }
   }
 ];

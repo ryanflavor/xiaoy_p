@@ -123,7 +123,7 @@ export function updateQueueSize(conn: string, size: number) {
 
 export function removeQueueSize(conn: string) {
   if (wsSendQueueSizeDiag) {
-    try { (wsSendQueueSizeDiag as any).remove({ conn }); } catch {}
+    try { (wsSendQueueSizeDiag as any).remove({ conn }); } catch { void 0 }
   }
   queueSizes.delete(conn);
   recomputeQueueAgg();

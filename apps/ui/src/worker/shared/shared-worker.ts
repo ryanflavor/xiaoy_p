@@ -3,6 +3,7 @@
 
 import { WSManager } from "../../lib/ws/manager.mjs";
 import type { Tick } from "@xiaoy/ts-contracts"; // consumer reference (type-only)
+export type _LinkedContracts_Tick = Tick;
 
 declare const self: SharedWorkerGlobalScope & { name?: string };
 
@@ -24,7 +25,7 @@ function ensureHeartbeat() {
   }, 15000) as unknown as number; // 15s heartbeat
 }
 
-function initSocket() {
+function _initSocket() {
   // URL should be provided by page via first message; use placeholder here
   // The first connected port is expected to send {kind: 'init', url: 'wss://...'}
 }
@@ -44,7 +45,7 @@ self.onconnect = (evt: MessageEvent) => {
       return;
     }
     if (msg.kind === "close") {
-      try { port.close?.() } catch {}
+      try { port.close?.() } catch { void 0 }
       ports.delete(port);
       if (ports.size === 0 && heartbeatTimer != null) {
         (self as any).clearInterval?.(heartbeatTimer);
@@ -62,12 +63,12 @@ self.onconnect = (evt: MessageEvent) => {
       return;
     }
     if (msg.kind === "subscribe" && typeof msg.topic === 'string') {
-      try { WSManager.addSubscription(msg.topic) } catch {}
+      try { WSManager.addSubscription(msg.topic) } catch { void 0 }
       port.postMessage({ kind: "ack", what: "subscribe", topic: msg.topic });
       return;
     }
     if (msg.kind === "unsubscribe" && typeof msg.topic === 'string') {
-      try { WSManager.removeSubscription(msg.topic) } catch {}
+      try { WSManager.removeSubscription(msg.topic) } catch { void 0 }
       port.postMessage({ kind: "ack", what: "unsubscribe", topic: msg.topic });
       return;
     }

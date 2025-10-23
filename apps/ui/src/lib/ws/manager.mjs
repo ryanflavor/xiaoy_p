@@ -76,16 +76,16 @@ class WebSocketManager {
             count++
           }
           if (count > 0) this.metrics.resubscribed += count
-        } catch {}
+        } catch { void 0 }
       })
       ws.addEventListener('message', (ev) => {
-        try { if (typeof this.onMessage === 'function') this.onMessage(ev) } catch {}
+        try { if (typeof this.onMessage === 'function') this.onMessage(ev) } catch { void 0 }
       })
       ws.addEventListener('close', (ev) => {
         try {
           this.lastCloseCode = ev?.code ?? null
           this.lastCloseReason = ev?.reason ?? null
-        } catch {}
+        } catch { void 0 }
         this.socket = null
         this.lastCloseTs = this.cfg.now()
         if (this.shouldReconnect) this.#scheduleReconnect(url, protocols, factory)
@@ -94,25 +94,25 @@ class WebSocketManager {
         this.lastError = e
       })
       this.listenersAttached = true
-    } catch {}
+    } catch { void 0 }
     return ws
   }
 
   /** Intentionally disconnect. */
   disconnect ({ reconnect = false } = {}) {
     this.shouldReconnect = !!reconnect
-    try { this.socket?.close?.() } catch {}
+    try { this.socket?.close?.() } catch { void 0 }
     if (!reconnect) this.cancelReconnect()
   }
 
   /** Add logical subscription to be restored after reconnect. */
   addSubscription (topic) {
     this.subs.add(topic)
-    if (this.socket) try { this.socket.send(JSON.stringify({ type:'subscribe', subjects: [topic] })) } catch {}
+    if (this.socket) try { this.socket.send(JSON.stringify({ type:'subscribe', subjects: [topic] })) } catch { void 0 }
   }
   removeSubscription (topic) {
     this.subs.delete(topic)
-    if (this.socket) try { this.socket.send(JSON.stringify({ type:'unsubscribe', subjects: [topic] })) } catch {}
+    if (this.socket) try { this.socket.send(JSON.stringify({ type:'unsubscribe', subjects: [topic] })) } catch { void 0 }
   }
 
   /** Record slow consumer metric. */
@@ -121,8 +121,8 @@ class WebSocketManager {
   /** Cancel any scheduled reconnect timer. */
   cancelReconnect () {
     if (this.reconnectTimer != null) {
-      try { if (typeof clearTimeout === 'function') clearTimeout(this.reconnectTimer) } catch {}
-      try { if (typeof clearImmediate === 'function') clearImmediate(this.reconnectTimer) } catch {}
+      try { if (typeof clearTimeout === 'function') clearTimeout(this.reconnectTimer) } catch { void 0 }
+      try { if (typeof clearImmediate === 'function') clearImmediate(this.reconnectTimer) } catch { void 0 }
     }
     this.reconnectTimer = null
     this.concurrentReconnects = 0

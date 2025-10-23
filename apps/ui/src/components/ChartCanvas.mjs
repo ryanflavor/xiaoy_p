@@ -321,7 +321,7 @@ export class ChartCanvas {
         if (d && typeof d.toLocaleTimeString === 'function') {
           label = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         }
-      } catch {}
+      } catch { void 0 }
       ctx.fillText(label, x, this.chartPadding.top + this.chartHeight + 20)
     }
 

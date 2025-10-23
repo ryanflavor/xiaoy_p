@@ -350,7 +350,7 @@ class RendererWorker {
 }
 
 // Initialize renderer worker
-const renderer = new RendererWorker()
+new RendererWorker()
 
 // Export for testing
 if (typeof module !== 'undefined' && module.exports) {

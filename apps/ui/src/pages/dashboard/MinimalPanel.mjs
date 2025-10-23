@@ -5,7 +5,7 @@ import { ChartCanvas } from '../../components/ChartCanvas.mjs'
 import { DegradationControls } from '../../components/DegradationControls.mjs'
 import { MetricsDisplay } from '../../components/MetricsDisplay.mjs'
 
-export class MinimalPanel {
+class MinimalPanelView {
   constructor() {
     this.rootElement = null
     this.unsubscribe = null
@@ -201,7 +201,7 @@ export class MinimalPanel {
     subscribeBtn.addEventListener('click', () => {
       const topic = topicInput.value.trim()
       if (topic) {
-        minimalPanelStore.subscribe(topic)
+        minimalPanelStore.subscribeTopic(topic)
       }
     })
 
@@ -264,7 +264,7 @@ export class MinimalPanel {
 
 // Factory function for router
 export function MinimalPanel(rootElement) {
-  const panel = new MinimalPanel()
+  const panel = new MinimalPanelView()
   panel.init(rootElement)
   return panel
 }

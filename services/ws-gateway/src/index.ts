@@ -3,7 +3,7 @@ import https from 'node:https';
 import url from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
 import pino from 'pino';
-import { connect, StringCodec, type NatsConnection, type Subscription } from 'nats';
+import { connect, type NatsConnection, type Subscription } from 'nats';
 import { loadConfig } from './config.js';
 import { compileWhitelist, isSubjectAllowed } from './acl.js';
 import { metricsText, wsActiveConnections, wsMessagesDropped, natsReconnects, setWsActive, recordForwarded, recordSlowConsumer, updateQueueSize, removeQueueSize } from './metrics.js';
@@ -60,7 +60,6 @@ type ClientCtx = {
 };
 
 const clients = new Map<string, ClientCtx>();
-const sc = StringCodec();
 
 function newClientId() { return Math.random().toString(36).slice(2, 10); }
 
@@ -105,7 +104,7 @@ async function handleUpgrade(req: http.IncomingMessage, socket: any, head: Buffe
     });
   } catch (err) {
     log.warn({ err }, 'XYW001 token verification failed');
-    try { socket.destroy(); } catch {}
+    try { socket.destroy(); } catch { void 0 }
   }
 }
 
@@ -142,7 +141,7 @@ async function main() {
         const msg = JSON.parse(data.toString());
         if (msg.type === 'subscribe' && Array.isArray(msg.subjects)) {
           // Clear existing subscriptions first; replace with provided list
-          for (const s of ctx.subs) try { s.sub.unsubscribe(); } catch {}
+          for (const s of ctx.subs) try { s.sub.unsubscribe(); } catch { void 0 }
           ctx.subs = [];
           for (const subj of msg.subjects) {
             if (!isSubjectAllowed(subj, allowRes)) {
@@ -173,7 +172,7 @@ async function main() {
           const remain: SubEntry[] = [];
           for (const s of ctx.subs) {
             if (targets.has(s.subject)) {
-              try { s.sub.unsubscribe(); } catch {}
+              try { s.sub.unsubscribe(); } catch { void 0 }
               log.info({ id, subj: s.subject }, 'client unsubscribed');
             } else {
               remain.push(s);
@@ -192,7 +191,7 @@ async function main() {
     });
 
     ws.on('close', (code, reason) => {
-      for (const s of ctx.subs) try { s.sub.unsubscribe(); } catch {}
+      for (const s of ctx.subs) try { s.sub.unsubscribe(); } catch { void 0 }
       clients.delete(id);
       wsActiveConnections.dec();
       setWsActive(clients.size);

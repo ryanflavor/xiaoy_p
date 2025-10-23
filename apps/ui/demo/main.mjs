@@ -12,7 +12,7 @@ meter.start()
 setInterval(() => {
   const v = meter.fps()
   fpsEl.textContent = String(v)
-  try { uiFpsGauge.set(v) } catch {}
+  try { uiFpsGauge.set(v) } catch { void 0 }
 }, 250)
 
 // Track message rate (msgs/sec) and e2e latency percentiles
@@ -26,7 +26,7 @@ function updateRateDisplay() {
   try {
     const stats = e2eLatency.stats()
     if (stats && latpEl) latpEl.textContent = `${Math.round(stats.p50)}/${Math.round(stats.p95)}/${Math.round(stats.p99)}`
-  } catch {}
+  } catch { void 0 }
 }
 setInterval(updateRateDisplay, 250)
 
@@ -69,7 +69,7 @@ port.onmessage = (e) => {
         let lat = (now + off) - Number(ts)
         if (lat < -5) { off += Math.round(-lat); window.__gwClockOffsetMs = off; lat = 0 }
         if (lat < 0) lat = 0
-        try { e2eLatency.observe(lat) } catch {}
+        try { e2eLatency.observe(lat) } catch { void 0 }
       }
     } catch {
       out.textContent = String(msg.payload)
@@ -78,7 +78,7 @@ port.onmessage = (e) => {
     const details = msg.topic ? ` ${msg.topic}` : ''
     out.textContent = `ack: ${msg.what}${details}`
     if (msg.what === 'subscribe' || msg.what === 'unsubscribe') {
-      try { port.postMessage({ kind: 'health' }) } catch {}
+      try { port.postMessage({ kind: 'health' }) } catch { void 0 }
     }
   }
 }
@@ -89,12 +89,12 @@ try {
   const params = new URL(location.href).searchParams
   const u = params.get('url'); if (u) $('wsUrl').value = u
   const tk = params.get('token'); if (tk) $('wsToken').value = tk
-} catch {}
+} catch { void 0 }
 
 $('btnConnect').onclick = () => {
   const url = $('wsUrl').value || 'ws://localhost:8080/ws'
   const token = $('wsToken').value || ''
-  try { calibrateClockFromHealthz(url).then((off)=>{ console.log('clock offset(ms)=', off); window.__gwClockOffsetMs = off }).catch(()=>{}) } catch {}
+  try { calibrateClockFromHealthz(url).then((off)=>{ console.log('clock offset(ms)=', off); window.__gwClockOffsetMs = off }).catch(()=>{}) } catch { void 0 }
   port.postMessage({ kind: 'init', url, token })
 }
 // Auto-connect if url+token prefilled (from query or previous state)
@@ -104,10 +104,10 @@ $('btnConnect').onclick = () => {
     const token = $('wsToken')?.value?.trim()
     if (url && token) {
       calibrateClockFromHealthz(url).then((off)=>{ window.__gwClockOffsetMs = off }).finally(()=>{
-        try { port.postMessage({ kind: 'init', url, token }) } catch {}
+        try { port.postMessage({ kind: 'init', url, token }) } catch { void 0 }
       })
     }
-  } catch {}
+  } catch { void 0 }
 })()
 $('btnHealth').onclick = () => port.postMessage({ kind: 'health' })
 $('btnSlow').onclick = () => port.postMessage({ kind: 'slow-consumer' })
@@ -141,7 +141,7 @@ async function calibrateClockFromHealthz (wsUrl) {
     }
     window.__gwClockOffsetMs = best.off
     return best.off
-  } catch (e) {
+  } catch (_e) {
     return 0
   }
 }

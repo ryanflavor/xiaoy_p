@@ -3,6 +3,8 @@ import type { AppConfig } from './config.js'
 // Type-only reference ensures consumers link generated contracts
 // without introducing a runtime dependency in this module
 import type { Tick } from '@xiaoy/ts-contracts'
+// Re-export a type alias to ensure usage and keep tree-shakers from dropping the import
+export type _LinkedContracts_Tick = Tick
 
 export function wsServerOptions(cfg: AppConfig): WebSocketServerOptions {
   return {
