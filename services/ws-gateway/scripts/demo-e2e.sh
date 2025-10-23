@@ -100,10 +100,10 @@ COMPOSE_PROJECT_NAME="$PROJECT_NAME" docker compose exec -T -e NATS_URL=nats://n
 echo "[6/6] Verifying receipt and metrics (positive path)"
 # Wait up to ~20s for the message to arrive
 for i in {1..20}; do
-  if grep -q "^message: demo-msg-" "$TMP_LOG"; then break; fi
+  if grep -qE "^message: .*demo-msg-" "$TMP_LOG"; then break; fi
   sleep 1
 done
-if ! grep -q "^message: demo-msg-" "$TMP_LOG"; then
+if ! grep -qE "^message: .*demo-msg-" "$TMP_LOG"; then
   echo "E2E FAILED: WebSocket client did not receive expected messages" >&2
   echo "--- WS CLIENT LOG ---" >&2
   sed -n '1,200p' "$TMP_LOG" >&2 || true
@@ -129,7 +129,7 @@ fi
 # ---------- Negative: unauthorized subject should not forward ----------
 echo "[NEG-2] Unauthorized subject not forwarded"
 BASE=$(curl -kfsS "$SCHEME://localhost:$GATEWAY_PORT/metrics" | awk '/^xy_ws_messages_forwarded_total/ {print $2}')
-TOKEN="$(cat .demo_token.txt)" WS_URL="ws://localhost:$GATEWAY_PORT/ws" DURATION_SEC=10 node -e '
+TOKEN="$(cat .demo_token.txt)" WS_URL="$SCHEME://localhost:$GATEWAY_PORT/ws" DURATION_SEC=10 node -e '
   import { readFileSync } from "node:fs";
   import { WebSocket } from "ws";
   const url = process.env.WS_URL;

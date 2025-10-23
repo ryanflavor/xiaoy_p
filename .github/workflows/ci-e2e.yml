@@ -18,11 +18,16 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: Install root deps (Playwright, tools)
-        run: npm i
+      - name: Enable Corepack (pnpm)
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.2 --activate
+
+      - name: Install root deps (pnpm)
+        run: pnpm install
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        run: pnpm exec playwright install --with-deps
 
       - name: Start Compose demo (core services)
         run: |
@@ -39,7 +44,7 @@ jobs:
         run: docker compose -f compose.demo.yml --profile demo up -d publisher
 
       - name: Run Playwright (demo-compose)
-        run: npm run test:e2e -- apps/ui/e2e/demo-compose.spec.ts
+        run: pnpm run test:e2e -- apps/ui/e2e/demo-compose.spec.ts
 
       - name: Archive Playwright artifacts
         if: always()
@@ -51,4 +56,3 @@ jobs:
       - name: Teardown
         if: always()
         run: docker compose -f compose.demo.yml down -v
-
