@@ -31,7 +31,7 @@ export default [
     files: ['**/*.{js,mjs,jsx}'],
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'all', caughtErrorsIgnorePattern: '^_' }],
-      'no-empty': 'warn'
+      'no-empty': 'error'
     }
   },
 

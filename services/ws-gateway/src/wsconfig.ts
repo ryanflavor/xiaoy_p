@@ -1,4 +1,4 @@
-import type { WebSocketServerOptions } from 'ws'
+import type { ServerOptions as WebSocketServerOptions } from 'ws'
 import type { AppConfig } from './config.js'
 // Type-only reference ensures consumers link generated contracts
 // without introducing a runtime dependency in this module

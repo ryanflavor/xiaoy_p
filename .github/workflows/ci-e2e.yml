@@ -17,6 +17,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Enable Corepack (pnpm)
         run: |
@@ -52,6 +54,21 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report
+
+      - name: Collect compose logs
+        if: always()
+        run: |
+          docker compose -f compose.demo.yml logs --no-color > compose-logs.txt || true
+          test -f /tmp/ws-gateway-e2e.log && cp /tmp/ws-gateway-e2e.log ws-gateway-e2e.log || true
+
+      - name: Upload compose logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-compose-logs
+          path: |
+            compose-logs.txt
+            ws-gateway-e2e.log
 
       - name: Teardown
         if: always()

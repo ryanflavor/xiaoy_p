@@ -17,19 +17,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Enable Corepack (pnpm)
         run: |
           corepack enable
           corepack prepare pnpm@9.12.2 --activate
 
-      - name: ws-gateway deps (pnpm)
+      - name: Install root deps (pnpm)
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (ESLint)
+        run: pnpm run lint:eslint
+
+      - name: ws-gateway deps (npm ci)
         working-directory: services/ws-gateway
-        run: pnpm install
+        run: npm ci
+
+      - name: ws-gateway typecheck
+        working-directory: services/ws-gateway
+        run: npx tsc -p tsconfig.json --noEmit
 
       - name: ws-gateway tests (vitest)
         working-directory: services/ws-gateway
-        run: pnpm vitest run --reporter=verbose
+        run: npx vitest run --reporter=verbose
 
       - name: UI tests (node --test)
         run: node --test apps/ui/test/overlay.test.mjs
